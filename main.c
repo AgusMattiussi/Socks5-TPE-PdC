@@ -23,9 +23,11 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#include "socks5.h"
-#include "selector.h"
-#include "socks5nio.h"
+//TODO: #include "socks5.h"
+#include "src/selector/selector.h"
+//TODO: #include "socks5nio.h"
+
+void socksv5_passive_accept(struct selector_key * key);
 
 static bool done = false;
 
@@ -157,10 +159,74 @@ finally:
     }
     selector_close();
 
-    socksv5_pool_destroy();
+    //TODO: socksv5_pool_destroy();
 
     if(server >= 0) {
         close(server);
     }
     return ret;
+}
+
+struct banana {
+    int fd;
+};
+
+void newFdRead(struct selector_key *key){
+    printf("Leyendo Pa\n");
+    printf("ANTES\n");
+    struct banana * unaBanana = (struct banana *) key->data;
+    printf("FD de la banana: %d\n", unaBanana->fd);
+    send(unaBanana->fd, "Estas leyendo", strlen("Estas leyendo"), 0);
+    printf("DESPUES\n");
+}
+
+void newFdWrite(struct selector_key *key){
+    printf("Escribiendo Pa\n");
+
+    struct banana * unaBanana = (struct banana *) key->data;
+    printf("FD de la banana: %d\n", unaBanana->fd);
+    send(unaBanana->fd, "Estas Escribiendo", strlen("Estas Escribiendo"), 0);
+}
+
+void newFdClose(struct selector_key *key){
+    selector_unregister_fd(key->s, ((struct banana *)key)->fd);
+    printf("Cerrando Pa\n");
+}
+
+void newFdBlock(struct selector_key *key){
+    printf("Bloqueando Pa\n");
+}
+
+void socksv5_passive_accept(struct selector_key * key) {
+    int master_fd = key->fd;
+    int new_fd;
+
+    if((new_fd = accept(master_fd, NULL, NULL)) < 0){
+        printf("ERROR EN accept \n");
+    }
+
+    printf("FD Original: %d\n", new_fd);
+
+    if( send(new_fd, "Bienvenido!!", strlen("Bienvenido!!"), 0) != strlen("Bienvenido!!") ) {
+        printf("ERROR EN send \n");
+    }
+
+    if( send(new_fd, "Bienvenido2!!", strlen("Bienvenido2!!"), 0) != strlen("Bienvenido2!!") ) {
+        printf("ERROR EN send \n");
+    }
+
+    if( send(new_fd, "Bienvenido3!!", strlen("Bienvenido3!!"), 0) != strlen("Bienvenido3!!") ) {
+        printf("ERROR EN send \n");
+    }
+
+    struct banana * unaBanana = malloc(sizeof(struct banana));
+    unaBanana->fd = new_fd;
+
+    fd_handler new_fd_handler = {&newFdRead, &newFdWrite, &newFdBlock, &newFdClose};
+
+
+    if(selector_register(key->s, new_fd, &new_fd_handler, OP_WRITE, unaBanana) != 0){
+        printf("Error en el register \n");
+    }
+
 }
