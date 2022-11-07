@@ -1,10 +1,10 @@
 /**
  * main.c - servidor proxy socks concurrente
  *
- * Interpreta los argumentos de lÃ­nea de comandos, y monta un socket
+ * Interpreta los argumentos de la línea de comandos, y monta un socket
  * pasivo.
  *
- * Todas las conexiones entrantes se manejarÃ¡n en Ã©ste hilo.
+ * Todas las conexiones entrantes se manejarán en este hilo.
  *
  * Se descargarÃ¡ en otro hilos las operaciones bloqueantes (resoluciÃ³n de
  * DNS utilizando getaddrinfo), pero toda esa complejidad estÃ¡ oculta en
@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <signal.h>
+#include "args.h"
 
 #include <unistd.h>
 #include <sys/types.h>   // socket
@@ -39,6 +40,18 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
+    signal(SIGTERM, sigterm_handler);
+    signal(SIGINT, sigterm_handler);
+
+    close(STDIN_FILENO);
+
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+
+    int returnCode = start_server(args.socks_addr, args.sockport);
+
+    return returnCode;
+    /*
     unsigned port = 1080;
 
     if(argc == 1) {
@@ -227,6 +240,6 @@ void socksv5_passive_accept(struct selector_key * key) {
 
     if(selector_register(key->s, new_fd, &new_fd_handler, OP_WRITE, unaBanana) != 0){
         printf("Error en el register \n");
-    }
+    }*/
 
 }
