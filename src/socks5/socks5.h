@@ -1,5 +1,5 @@
 #include "../stm/stm.h"
-#include "../stm/buffer.h"
+#include "../buffer/buffer.h"
 
 #include <netdb.h>
 #include <stdint.h>
@@ -22,30 +22,44 @@ enum socks_state{
     COPY,
     DONE,
     ERROR,
-}
+};
+
+struct copy_model{
+    int fd;
+    buffer *read_buff;
+    buffer *write_buff;
+    fd_interest interests;
+    fd_interest connection_interests;
+    struct copy * other;
+};
 
 typedef struct socks_conn_model{
     struct sockaddr_storage cli_addr;
     socklen_t cli_addr_len;
     int cli_socket;
+    int cli_interests; //Power of 2 mask defined in selector.h
 
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
     int src_socket;
     int src_domain;
+    int src_interests; 
 
     struct addrinfo * resolved_addr;
     struct addrinfo * curr_addr;
 
-
-    // uint8_t * raw_buffer_[a|b]
     buffer read_buff;
     buffer write_buff;
+
+    //Check how to use according to Coda implementation
+    uint8_t * aux_read_buff;
+    uint8_t * aux_write_buff;
 
     struct state_machine stm;
 
     // This parser will later become a auth or request, for now it is a connect parser
-    struct conn_parser connect_parser;
+    //  (Commented while it is in progress)
+    //struct conn_parser connect_parser;
 
     // POP3?
 
@@ -56,3 +70,4 @@ typedef struct socks_conn_model{
     const struct user * user;
 } socks_conn_model;
 
+struct state_definition * socks5_all_states();

@@ -4,6 +4,9 @@
 #include "src/parser/parser.h"
 #include "src/selector/selector.h"
 #include "src/stm/stm.h"
+#include "src/socks5/socks5.h"
+
+#include <sys/signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +19,7 @@
 
 #define INITIAL_N 20
 #define MAX_QUEUE 50
+#define BUFF_SIZE 4096
 
 //TODO (General): Set error codes in all goto finally calls.
 
@@ -23,24 +27,60 @@ static void passive_socks_socket_handler(struct selector_key * key);
 
 static fd_selector selector;
 
-const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0,
-                                                     0, 0};
+const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
 
 
 static void passive_socks_socket_handler(struct selector_key * key){
-    /*
+    //TODO: Check if enough fds are available
+    socks_conn_model * connection = malloc(sizeof(struct socks_conn_model));
+    if(connection == NULL) { return; }
+    memset(connection, 0, sizeof(*connection));
+
+    connection->cli_interests = OP_READ;
+    connection->src_interests = OP_NOOP;
+
+    connection->aux_read_buff = malloc(BUFF_SIZE);
+    connection->aux_write_buff = malloc(BUFF_SIZE);
+    buffer_init(&connection->read_buff, BUFF_SIZE, connection->aux_read_buff);
+    buffer_init(&connection->write_buff, BUFF_SIZE, connection->aux_write_buff);
+
+    //State Machine parameter setting
+    connection->stm.initial = CONN_READ;
+    connection->stm.max_state = DONE;
+    connection->stm.states = socks5_all_states();
+    stm_init(&connection->stm);
+
+    //After setting up the configuration, we accept the connection
+    connection->cli_addr_len = sizeof(connection->cli_addr);
+    connection->cli_socket = accept(key->fd, (struct sockaddr *)&connection->cli_addr,
+    &connection->cli_addr_len);
+    if(connection->cli_socket == -1){
+        //close_socks5_connection(connection);
+        return;
+    }
+
+    //If socket was succesfully created, we add to selector 
+    int sel_ret = selector_fd_set_nio(connection->cli_socket);
+    if(sel_ret == -1){
+        //close_socks5_connection(connection);
+        return;
+    }
+    //TODO: Need to set the connection actions handler in order to let the stm know what to do
+    //  read, write, block and close operations are needed.
+    selector_status sel_register_ret = selector_register(selector, connection->cli_socket,
+    &connection_actions_handler, OP_READ, connection);
+    if(sel_register_ret != SELECTOR_SUCCESS){
+        //close_socks5_connection(connection);
+        return;
+    }
 
 
-
-    TODO: Build passive socket handler for socks connection
-
-
-
-
-    */
+finally:
+    return;
 }
 
-static int start_socket(unsigned short port, char * addr, const struct * fd_handler handler, int family){
+static int start_socket(unsigned short port, char * addr, 
+                        const struct fd_handler * handler, int family){
     int ret_fd;
     
     struct addrinfo hints; 
@@ -64,24 +104,24 @@ static int start_socket(unsigned short port, char * addr, const struct * fd_hand
 
     //Reuse address
     int ret_setsockopt = -1;
-    ret_setsockopt = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+    ret_setsockopt = setsockopt(ret_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
     if(ret_setsockopt == -1){goto finally;}
 
     //Set for IPv6 if necessary
     if(family == AF_INET6){
         int ret_setsockopt_ipv6;
-        ret_setsockopt_ipv6 = setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
+        ret_setsockopt_ipv6 = setsockopt(ret_fd, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
         if(ret_setsockopt_ipv6 == -1){goto finally;}
     }
 
-    int ret_bind = bind(fd, res->ai_addr, res-_ai_addrlen);
+    int ret_bind = bind(ret_fd, res->ai_addr, res->ai_addrlen);
     if(ret_bind < 0){goto finally;}
 
-    int ret_listen = listen(fd, MAX_QUEUE);
-    it(ret_listen < 0){goto finally;}
+    int ret_listen = listen(ret_fd, MAX_QUEUE);
+    if(ret_listen < 0){ goto finally; }
 
     int ret_register;
-    ret_register = selector_register(selector, fd, handler, OP_READ, NULL);
+    ret_register = selector_register(selector, ret_fd, handler, OP_READ, NULL);
     if(ret_register != SELECTOR_SUCCESS){goto finally;}
 
 finally:
@@ -96,7 +136,7 @@ int start_server(char * socks_addr, unsigned short socks_port){
 
     //Initialization of selector struct
     struct timespec select_timeout = {0};
-    select_timeout.tv_sec = SELECTOR_TIMEOUT;
+    select_timeout.tv_sec = 100;
     struct selector_init select_init_struct = {SIGCHLD, select_timeout};
 
     // Configure the selector
