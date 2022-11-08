@@ -5,6 +5,7 @@
 #include "src/selector/selector.h"
 #include "src/stm/stm.h"
 #include "src/socks5/socks5.h"
+#include "src/conn_handler.h"
 
 #include <sys/signal.h>
 #include <stdio.h>
@@ -28,6 +29,10 @@ static void passive_socks_socket_handler(struct selector_key * key);
 static fd_selector selector;
 
 const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
+//TODO: Should this functions have a &? 
+const struct fd_handler connection_actions_handler = 
+{socks_connection_read,socks_connection_write,
+socks_connection_block,socks_connection_close};
 
 
 static void passive_socks_socket_handler(struct selector_key * key){
@@ -73,10 +78,6 @@ static void passive_socks_socket_handler(struct selector_key * key){
         //close_socks5_connection(connection);
         return;
     }
-
-
-finally:
-    return;
 }
 
 static int start_socket(unsigned short port, char * addr, 

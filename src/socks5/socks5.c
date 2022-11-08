@@ -4,6 +4,12 @@
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
 static const struct state_definition states[] = {
     {
+        .state = HELLO_READ,
+    },
+    {
+        .state = HELLO_WRITE,
+    },
+    {
         .state = CONN_READ,
     },
     {
