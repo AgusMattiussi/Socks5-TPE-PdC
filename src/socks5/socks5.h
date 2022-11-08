@@ -59,7 +59,7 @@ typedef struct socks_conn_model{
 
     // This parser will later become a auth or request, for now it is a connect parser
     //  (Commented while it is in progress)
-    //struct conn_parser connect_parser;
+    struct conn_parser connect_parser;
 
     // POP3?
 
