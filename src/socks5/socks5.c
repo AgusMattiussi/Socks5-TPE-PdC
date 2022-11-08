@@ -23,13 +23,10 @@ static enum socks_state conn_read(struct selector_key * key){
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_write_ptr(&connection->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_socket, buff_ptr, byte_n, NULL); //Flags?
+    ssize_t n_received = recv(connection->cli_socket, buff_ptr, byte_n, NULL); //TODO:Flags?
 
     if(n_received <= 0) return ERROR;
     buffer_write_adv(&connection->read_buff, n_received);
-
-    // TODO: Now we need to parse the input we receive and set the appropiate
-    // return state.
 
     enum conn_state ret_state = conn_parse_full(parser, &connection->read_buff);
     if(ret_state == ERROR){
@@ -56,6 +53,42 @@ static enum socks_state conn_read(struct selector_key * key){
     return CONN_READ;
 }
 
+static enum socks_state conn_write(struct selector_key * key){
+    socks_conn_model * connection = (socks_conn_model *) key->data;
+    // We need to build the write the server response to buffer
+    size_t n_available;
+    uint8_t buff_ptr = buffer_read_ptr(&connection->write_buff, &n_available);
+    ssize_t n_sent = send(connection->cli_socket, buff_ptr, n_available, NULL); //TODO: Flags?
+    if(n_sent == -1){
+        fpritnf(stdout, "Error sending bytes to client socket.");
+        return ERROR;
+    }
+    buffer_read_adv(&connection->write_buff, n_sent);
+    // We need to check whether there is something else to send. If so, we keep writing
+    if(buffer_can_read(&connection->write_buff)){
+        return CONN_WRITE;
+    }
+
+    // Nothing else to send. We set fd_interests and add to selector
+    selector_status status = selector_set_interest_key(key, OP_READ);
+    if(status != SELECTOR_SUCCESS) return ERROR;
+
+    switch(connection->connect_parser.auth){
+        case NO_AUTH:
+            //TODO: Auth methods (CHANGE RETURN STATE)
+            return DONE;
+        case USER_PASS:
+            //TODO: Auth methods (CHANGE RETURN STATE)
+            return DONE;
+        case GSSAPI:
+            //Should never reach this stage, just in case
+            fprintf(stdout, "GSSAPI is out of this project's scope.");
+            return DONE;
+        case NO_METHODS:
+            // We close the connection (nothing else to do)
+            return DONE;
+    }
+}
 
 
 
@@ -75,6 +108,7 @@ static const struct state_definition states[] = {
     },
     {
         .state = CONN_WRITE,
+        .on_write_ready = conn_write,
     },
     {
         .state = AUTH_READ,
