@@ -1,8 +1,21 @@
 #include "conn_handler.h"
 #include "stm/stm.h"
 #include "socks5/socks5.h"
+#include "selector/selector.h"
 
-void close(socks_conn_model * connection){}
+void close_socks5_connection(socks_conn_model * connection){
+    if(connection->cli_socket != -1){
+        //TODO: Creo que hay que sacar el FD del selector acá
+        close(connection->cli_socket);
+    }
+    if(connection->src_socket != -1){close(connection->src_socket);}
+    if(connection->resolved_addr != NULL){freeaddrinfo(connection->resolved_addr);}
+    buffer_reset(&connection->read_buff);
+    buffer_reset(&connection->write_buff);
+    free(connection->aux_read_buff);
+    free(connection->aux_write_buff);
+    free(connection);
+}
 
 
 void socks_connection_read(struct selector_key * key){
@@ -11,7 +24,7 @@ void socks_connection_read(struct selector_key * key){
     enum socks_state state = stm_handler_read(&connection->stm, key);
     if(state == ERROR){
         //For debugging purposes
-        fprintf(STDOUT_FILENO, "Error in stm reading");
+        fprintf(STDOUT_FILENO, "Error in stm read");
         close(connection);
     }
     else if(state == DONE){
@@ -46,5 +59,5 @@ void socks_connection_block(struct selector_key * key){
 }
 void socks_connection_close(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
-    close(connection);
+    close_socks5_connection(connection);
 }

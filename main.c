@@ -24,9 +24,9 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-//TODO: #include "socks5.h"
+#include "src/socks5/socks5.h"
 #include "src/selector/selector.h"
-//TODO: #include "socks5nio.h"
+#include "server.h"
 
 void socksv5_passive_accept(struct selector_key * key);
 
@@ -48,7 +48,7 @@ main(const int argc, const char **argv) {
     struct socks5args args;
     parse_args(argc, argv, &args);
 
-    int returnCode = start_server(args.socks_addr, args.sockport);
+    int returnCode = start_server(args.socks_addr, args.socks_port);
 
     return returnCode;
     /*

@@ -1,5 +1,7 @@
 #include "../stm/stm.h"
 #include "../buffer/buffer.h"
+#include "../parsers/conn_parser.h"
+#include "../parsers/auth_parser.h"
 
 #include <netdb.h>
 #include <stdint.h>
@@ -60,6 +62,7 @@ typedef struct socks_conn_model{
     // This parser will later become a auth or request, for now it is a connect parser
     //  (Commented while it is in progress)
     struct conn_parser connect_parser;
+    struct auth_parser auth_parser;
 
     // POP3?
 

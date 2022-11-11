@@ -30,6 +30,10 @@ void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
                 break;
             }
         case CONN_NMETHODS:
+            //TODO: Re hacer este método (no va a andar si no)
+            if(to_parse == 0x00){
+
+            }
             parser->state = to_parse == 0? CONN_DONE:CONN_METHODS;
             break;
         case CONN_METHODS:

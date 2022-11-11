@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*----------------------
+ |  Connection functions
+ -----------------------*/
+
 void conn_read_init(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     // TODO: Where to parse input? 
@@ -75,22 +79,31 @@ static enum socks_state conn_write(struct selector_key * key){
 
     switch(connection->connect_parser.auth){
         case NO_AUTH:
-            //TODO: Auth methods (CHANGE RETURN STATE)
-            return DONE;
+            return REQ_READ;
         case USER_PASS:
-            //TODO: Auth methods (CHANGE RETURN STATE)
-            return DONE;
+            return AUTH_READ;
         case GSSAPI:
-            //Should never reach this stage, just in case
             fprintf(stdout, "GSSAPI is out of this project's scope.");
             return DONE;
         case NO_METHODS:
-            // We close the connection (nothing else to do)
             return DONE;
     }
+    return ERROR;
 }
 
+/*----------------------------
+ |  Authentication functions
+ ---------------------------*/
 
+
+ void auth_read_init(struct selector_key * key){
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    auth_parser_init(&connection->auth_parser);
+ }
+
+ static enum socks_state auth_read(struct selector_key * key){
+    
+ }
 
 
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
@@ -112,6 +125,8 @@ static const struct state_definition states[] = {
     },
     {
         .state = AUTH_READ,
+        .on_arrival = auth_read_init,
+        .on_read_ready = auth_read,
     },
     {
         .state = AUTH_WRITE,

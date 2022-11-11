@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>  
-#include <math.h>  
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include "server.h"
 #include "selector.h"
@@ -60,18 +61,17 @@ static void passive_socks_socket_handler(struct selector_key * key){
     connection->cli_socket = accept(key->fd, (struct sockaddr *)&connection->cli_addr,
     &connection->cli_addr_len);
     if(connection->cli_socket == -1){
-        //close_socks5_connection(connection);
+        //TODO: close_socks5_connection(connection);
         return;
     }
-
-    //If socket was succesfully created, we add to selector 
+ 
     int sel_ret = selector_fd_set_nio(connection->cli_socket);
     if(sel_ret == -1){
         //close_socks5_connection(connection);
         return;
     }
-    //TODO: Need to set the connection actions handler in order to let the stm know what to do
-    //  read, write, block and close operations are needed.
+    
+    
     selector_status sel_register_ret = selector_register(selector, connection->cli_socket,
     &connection_actions_handler, OP_READ, connection);
     if(sel_register_ret != SELECTOR_SUCCESS){
@@ -84,17 +84,17 @@ static int start_socket(unsigned short port, char * addr,
                         const struct fd_handler * handler, int family){
     int ret_fd;
     
-    struct addrinfo hints; 
+    struct addrinfo hints; //Naming corresponding to fields in 'man getaddrinfo'
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = family;
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
     struct addrinfo * res = NULL;
 
     //TODO: Check if itoa() of unsigned short works
-    char buff[256];
+    char service[256];
     int base = 10;
-    char * service;
-    service = itoa(port, buff, base);
+    sprintf(service, "%d", port);
+    printf(service);
 
     int ret_addrinfo;
     ret_addrinfo = getaddrinfo(addr, service, &hints, &res);
@@ -152,7 +152,7 @@ int start_server(char * socks_addr, unsigned short socks_port){
     // Initialize the selector
     selector = selector_new(INITIAL_N);
     if(selector == NULL){
-        //TODO: Set an error message
+        fprintf(stderr, "Selector creation failed.");
         goto finally;
     }
 
