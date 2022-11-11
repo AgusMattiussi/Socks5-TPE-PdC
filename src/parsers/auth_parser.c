@@ -7,36 +7,45 @@
 void auth_parser_init(struct auth_parser * parser){
     parser->state = AUTH_VER;
     parser->to_parse = 0;
-    //TODO
+    parser->where_to = NULL;
 }
 
-void set_len_to_parse(struct auth_parser * parser, uint8_t byte){
+void plain_parse_byte(struct auth_parser * parser, uint8_t to_parse){
+    *parser->where_to = to_parse;
+    parser->to_parse--; parser->where_to++;
+    if(parser->to_parse == 0){
+        parser->state = parser->state == AUTH_UNAME?AUTH_PLEN:AUTH_DONE;
+        parser->where_to = NULL; 
+    }
+}
+
+void set_len_to_parse(struct auth_parser * parser, uint8_t to_parse){
     enum auth_state current = parser->state;
-    if(byte == 0){
+    if(to_parse == 0){
         if(current == AUTH_ULEN) parser->state = AUTH_PLEN;
         else{ /*Can only be PLEN*/ parser->state = AUTH_DONE;}
     }
     else{
-        parser->to_parse = byte;
+        parser->to_parse = to_parse;
         parser->state = current == AUTH_ULEN?AUTH_UNAME:AUTH_PASSWD;
         parser->where_to = current == AUTH_ULEN?parser->username:parser->password;
-
+        parser->where_to[to_parse]='\0'; //Delimiting end of string dynamically.
     }
 }
 
-void auth_parse_byte(struct auth_parser * parser, uint8_t byte){
-    switch(byte){
+void auth_parse_byte(struct auth_parser * parser, uint8_t to_parse){
+    switch(parser->state){
         case AUTH_VER: 
-            if(byte == AUTH_VERSION){parser->state = AUTH_ULEN;}
+            if(to_parse == AUTH_VERSION){parser->state = AUTH_ULEN;}
             else{parser->state = AUTH_ERROR;}
             break;
         case AUTH_ULEN:
         case AUTH_PLEN:
-            set_len_to_parse(parser, byte);
+            set_len_to_parse(parser, to_parse);
             break;
         case AUTH_UNAME:
         case AUTH_PASSWD:
-            plain_parse_byte(parser, byte);
+            plain_parse_byte(parser, to_parse);
             break;
         case AUTH_DONE:
         case AUTH_ERROR:

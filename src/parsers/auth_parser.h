@@ -42,6 +42,7 @@ are valid
 */
 
 const static uint8_t AUTH_VERSION = 0x01;
+const static uint8_t MAX_LEN = 255;
 
 enum auth_state{
     AUTH_VER,

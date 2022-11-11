@@ -16,8 +16,18 @@ void start_connection_parser(struct conn_parser * parser){
     parser->buff = NULL;
 }
 
+void set_new_method(struct conn_parser * parser, enum auth_method to_parse){
+    if(to_parse == GSSAPI){
+        fprintf(stdout, "GSSAPI is not supported in this project's scope.");
+        return;
+    }
+    if(to_parse == USER_PASS) parser->state = USER_PASS;
+    else if(to_parse == NO_AUTH && parser->auth != USER_PASS)parser->state = NO_AUTH;
+
+}
+
 void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
-    switch(to_parse){
+    switch(parser->state){
         //What state are we in, and what does this byte mean in that context
         case CONN_VERSION:
             if(to_parse == SOCKS_VERSION){
@@ -30,27 +40,18 @@ void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
                 break;
             }
         case CONN_NMETHODS:
-            //TODO: Re hacer este método (no va a andar si no)
             if(to_parse == 0x00){
-
-            }
-            parser->state = to_parse == 0? CONN_DONE:CONN_METHODS;
-            break;
-        case CONN_METHODS:
-            if(to_parse != GSSAPI){
-                bool valid_method = check_if_valid_method(to_parse);
-                if(valid_method){
-                    parser->auth = (enum auth_method) to_parse;
-                }
-                else{
-                    fprintf(STDOUT_FILENO, "Invalid auth method provided.");
-                    parser->state = CONN_ERROR;
-                }
+                parser->state = CONN_DONE;
             }
             else{
-                fprintf(STDOUT_FILENO, "Current project version does not support auth via GSS_API yet. Sorry.");
-                parser->state = CONN_ERROR;
+                parser->to_parse = to_parse;
+                parser->state = CONN_METHODS;
             }
+            break;
+        case CONN_METHODS:
+            set_new_method(parser, to_parse);
+            parser->to_parse--;
+            if(parser->to_parse==0) parser->state = CONN_DONE;
             break;
         case CONN_DONE: case CONN_ERROR: break;
         default: fprintf(stdout, "Error at parsing. Please try again.");
