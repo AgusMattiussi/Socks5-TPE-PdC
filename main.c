@@ -155,7 +155,7 @@ main(const int argc, const char **argv) {
 		return -1;
 	}
 
-	int destFd = -1;
+	destFd = -1;
 	for (struct addrinfo *addr = servAddr; addr != NULL && destFd == -1; addr = addr->ai_next) {
 		// Create a reliable, stream socket using TCP
 		destFd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
@@ -230,9 +230,9 @@ void newFdRead(struct selector_key *key){
         printf("No recibi bien\n");
     buffer[bytes] = '\0';
 
-    printf("RECIBI: %s, lo voy a mandar a %d\n", buffer, 3);
+    printf("RECIBI: %s, lo voy a mandar a %d\n", buffer, destFd);
 
-    int sent = send(3, buffer, strlen(buffer), 0);
+    int sent = send(destFd, buffer, strlen(buffer), 0);
     if(sent < 0)
         printf("No escribi bien\n");
     if(sent == 0)
