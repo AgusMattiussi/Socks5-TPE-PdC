@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include "args.h"
+#include "include/args.h"
 
 static unsigned short
 port(const char *s) {
@@ -40,7 +40,7 @@ user(char *s, struct users *user) {
 static void
 version(void) {
     fprintf(stderr, "socks5v version 0.0\n"
-                    "ITBA Protocolos de Comunicación 2020/1 -- Grupo X\n"
+                    "ITBA Protocolos de Comunicación 2022/2 -- Grupo 3\n"
                     "AQUI VA LA LICENCIA\n");
 }
 
