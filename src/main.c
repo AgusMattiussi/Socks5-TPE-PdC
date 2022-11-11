@@ -46,11 +46,13 @@ sigterm_handler(const int signal) {
 int
 main(const int argc, const char **argv) {
     unsigned port = 1080;
+    char * destPort = "9090";
+    char * destIp = "localhost";
 
 
     if(argc == 1) {
         // utilizamos el default
-    } else if(argc == 2) {
+    } else if(argc >= 2 || argc<=4) {
         char *end     = 0;
         const long sl = strtol(argv[1], &end, 10);
 
@@ -61,6 +63,13 @@ main(const int argc, const char **argv) {
             return 1;
         }
         port = sl;
+
+        if(argc >= 3)
+            destIp = argv[2];
+
+        if(argc >= 4)
+            destPort = argv[3];
+
     } else {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         return 1;
@@ -150,7 +159,7 @@ main(const int argc, const char **argv) {
 
 	// Get address(es)
 	struct addrinfo *servAddr; // Holder for returned list of server addrs
-	int rtnVal = getaddrinfo("localhost", "9090", &addrCriteria, &servAddr);
+	int rtnVal = getaddrinfo(destIp, destPort, &addrCriteria, &servAddr);
 	if (rtnVal != 0) {
 		return -1;
 	}
