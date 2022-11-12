@@ -42,13 +42,13 @@ static void passive_socks_socket_handler(struct selector_key * key){
     if(connection == NULL) { return; }
     memset(connection, 0, sizeof(*connection));
 
-    connection->cli_interests = OP_READ;
-    connection->src_interests = OP_NOOP;
+    connection->cli_conn->interests = OP_READ;
+    connection->src_conn->interests = OP_NOOP;
 
-    connection->aux_read_buff = malloc(BUFF_SIZE);
-    connection->aux_write_buff = malloc(BUFF_SIZE);
-    buffer_init(&connection->read_buff, BUFF_SIZE, connection->aux_read_buff);
-    buffer_init(&connection->write_buff, BUFF_SIZE, connection->aux_write_buff);
+    connection->buffers->aux_read_buff = malloc(BUFF_SIZE);
+    connection->buffers->aux_write_buff = malloc(BUFF_SIZE);
+    buffer_init(&connection->buffers->read_buff, BUFF_SIZE, connection->buffers->aux_read_buff);
+    buffer_init(&connection->buffers->write_buff, BUFF_SIZE, connection->buffers->aux_write_buff);
 
     //State Machine parameter setting
     connection->stm.initial = CONN_READ;
@@ -57,22 +57,22 @@ static void passive_socks_socket_handler(struct selector_key * key){
     stm_init(&connection->stm);
 
     //After setting up the configuration, we accept the connection
-    connection->cli_addr_len = sizeof(connection->cli_addr);
-    connection->cli_socket = accept(key->fd, (struct sockaddr *)&connection->cli_addr,
-    &connection->cli_addr_len);
-    if(connection->cli_socket == -1){
+    connection->cli_conn->addr_len = sizeof(connection->cli_conn->addr);
+    connection->cli_conn->socket = accept(key->fd, (struct sockaddr *)&connection->cli_conn->addr,
+    &connection->cli_conn->addr_len);
+    if(connection->cli_conn->socket == -1){
         //TODO: close_socks5_connection(connection);
         return;
     }
  
-    int sel_ret = selector_fd_set_nio(connection->cli_socket);
+    int sel_ret = selector_fd_set_nio(connection->cli_conn->socket);
     if(sel_ret == -1){
-        //close_socks5_connection(connection);
+        //TODO: close_socks5_connection(connection);
         return;
     }
     
     
-    selector_status sel_register_ret = selector_register(selector, connection->cli_socket,
+    selector_status sel_register_ret = selector_register(selector, connection->cli_conn->socket,
     &connection_actions_handler, OP_READ, connection);
     if(sel_register_ret != SELECTOR_SUCCESS){
         //close_socks5_connection(connection);

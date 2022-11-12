@@ -4,16 +4,16 @@
 #include "selector/selector.h"
 
 void close_socks5_connection(socks_conn_model * connection){
-    if(connection->cli_socket != -1){
+    if(connection->cli_conn->socket != -1){
         //TODO: Creo que hay que sacar el FD del selector acá
-        close(connection->cli_socket);
+        close(connection->cli_conn->socket);
     }
-    if(connection->src_socket != -1){close(connection->src_socket);}
+    if(connection->src_conn->socket != -1){close(connection->src_conn->socket);}
     if(connection->resolved_addr != NULL){freeaddrinfo(connection->resolved_addr);}
-    buffer_reset(&connection->read_buff);
-    buffer_reset(&connection->write_buff);
-    free(connection->aux_read_buff);
-    free(connection->aux_write_buff);
+    buffer_reset(&connection->buffers->read_buff);
+    buffer_reset(&connection->buffers->write_buff);
+    free(connection->buffers->aux_read_buff);
+    free(connection->buffers->aux_write_buff);
     free(connection);
 }
 

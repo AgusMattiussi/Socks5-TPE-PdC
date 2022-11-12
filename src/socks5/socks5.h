@@ -2,6 +2,7 @@
 #include "../buffer/buffer.h"
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
+#include "../parsers/req_parser.h"
 
 #include <netdb.h>
 #include <stdint.h>
@@ -35,34 +36,40 @@ struct copy_model{
     struct copy * other;
 };
 
-typedef struct socks_conn_model{
-    struct sockaddr_storage cli_addr;
-    socklen_t cli_addr_len;
-    int cli_socket;
-    int cli_interests; //Power of 2 mask defined in selector.h
+struct std_conn_model{
+    struct sockaddr_storage addr;
+    socklen_t addr_len;
+    int socket;
+    int interests;
+};
 
-    struct sockaddr_storage src_addr;
-    socklen_t src_addr_len;
-    int src_socket;
+struct buffers_t{
+    buffer read_buff;
+    buffer write_buff;
+
+    uint8_t * aux_read_buff;
+    uint8_t * aux_write_buff;
+};
+
+struct parsers_t{
+    struct conn_parser connect_parser;
+    struct auth_parser auth_parser;
+    struct req_parser req_parser;
+};
+
+typedef struct socks_conn_model{
+
+    struct std_conn_model * cli_conn;
+    struct std_conn_model * src_conn;
     int src_domain;
-    int src_interests; 
+
+    struct buffers_t * buffers;
+    struct parsers_t * parsers;
 
     struct addrinfo * resolved_addr;
     struct addrinfo * curr_addr;
 
-    buffer read_buff;
-    buffer write_buff;
-
-    //Check how to use according to Coda implementation
-    uint8_t * aux_read_buff;
-    uint8_t * aux_write_buff;
-
     struct state_machine stm;
-
-    // This parser will later become a auth or request, for now it is a connect parser
-    //  (Commented while it is in progress)
-    struct conn_parser connect_parser;
-    struct auth_parser auth_parser;
 
     // POP3?
 
