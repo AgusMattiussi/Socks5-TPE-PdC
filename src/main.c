@@ -27,6 +27,7 @@
 #include <netdb.h>
 //TODO: #include "socks5.h"
 #include "include/selector.h"
+#include "include/buffer.h"
 //TODO: #include "socks5nio.h"
 
 #define DEST_PORT 9090
@@ -36,6 +37,10 @@ void socksv5_passive_accept(struct selector_key * key);
 
 static bool done = false;
 int destFd = 0;
+static buffer clientBuffer;
+static buffer serverBuffer;
+static uint8_t clientBufferData[1024];
+static uint8_t serverBufferData[1024];
 
 static void
 sigterm_handler(const int signal) {
@@ -82,7 +87,11 @@ main(const int argc, const char **argv) {
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    
+    /* clientBuffer = malloc(sizeof(struct buffer));
+    serverBuffer = malloc(sizeof(struct buffer)); */
+
+    buffer_init(&clientBuffer, 1024, clientBufferData);
+    buffer_init(&serverBuffer, 1024, serverBufferData);
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -228,31 +237,65 @@ struct banana {
     int fd;
 };
 
-void newFdRead(struct selector_key *key){
-    printf("Leyendo Pa\n");
+void clientRead(struct selector_key *key){
+    printf("Leyendo del cliente Pa\n");
     struct banana * unaBanana = (struct banana *) key->data;
-    char buffer[1024];
+
+    if(!buffer_can_write(&clientBuffer))
+        return;
+    
+    size_t nByte = 0;
+
+    uint8_t * buf = buffer_write_ptr(&clientBuffer, &nByte);
+    int bytes = recv(unaBanana->fd, buf, nByte, 0);
+
+    if(bytes < 0){
+        printf("Error en recv\n");
+        return;
+    }
+    if(bytes == 0) {
+        printf("Cerrada conexion cliente\n");
+        return;
+    }
+        
+    buffer_write_adv(&clientBuffer, bytes);
+
+    if(!buffer_can_read(&clientBuffer))
+        return;
+
+    buf = buffer_read_ptr(&clientBuffer, &nByte);
+    int sent = send(destFd, buf, nByte, 0);
+    if(sent < 0){
+        printf("Error en send\n");
+        return;
+    }
+    if(sent == 0){
+        printf("Cerrada conexion servidor\n");
+        return;    
+    }
+    buffer_read_adv(&clientBuffer, sent);
 
 
-    int bytes = recv(unaBanana->fd, buffer, 1023, 0);
-    if(bytes < 0)
-        printf("No recibi bien\n");
-    buffer[bytes] = '\0';
+    printf("LEIDO PAAAAAA\n");
+}
 
-    printf("RECIBI: %s, lo voy a mandar a %d\n", buffer, destFd);
+/* struct banana * unaBanana = (struct banana *) key->data;
 
     int sent = send(destFd, buffer, strlen(buffer), 0);
     if(sent < 0)
         printf("No escribi bien\n");
     if(sent == 0)
-        printf("Manda algo salame\n");
+        printf("Manda algo salame\n"); */
 
-    printf("ENVIE: %s\n", buffer);
-    printf("LEIDO PAAAAAA\n");
-}
+void clientWrite(struct selector_key *key){
+    printf("Escribiendo en el cliente Pa\n");
 
-void newFdWrite(struct selector_key *key){
-    printf("Escribiendo Pa\n");
+
+    /* struct banana * unaBanana = (struct banana *) key->data;
+    int sent = send(unaBanana->fd, serverBuf, sbCount, 0);
+    if(sent < 0)
+        printf("No escribi bien\n"); */
+    
 }
 
 void newFdClose(struct selector_key *key){
@@ -272,13 +315,13 @@ void socksv5_passive_accept(struct selector_key * key) {
         printf("ERROR EN accept \n");
     }
 
-    if( send(new_fd, "Bienvenido!!", strlen("Bienvenido!!"), 0) != strlen("Bienvenido!!") ) {
+    if( send(new_fd, "Bienvenido!!\n", strlen("Bienvenido!!\n"), 0) != strlen("Bienvenido!!\n") ) {
         printf("ERROR EN send \n");
     }
 
     struct banana * unaBanana = malloc(sizeof(struct banana));
     unaBanana->fd = new_fd;
-    fd_handler new_fd_handler = {&newFdRead, &newFdWrite, &newFdBlock, &newFdClose};
+    fd_handler new_fd_handler = {&clientRead, &clientWrite, &newFdBlock, &newFdClose};
 
 
     if(selector_register(key->s, new_fd, &new_fd_handler, OP_READ, unaBanana) != 0){

@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
-
 #include "include/buffer.h"
 
 inline void
@@ -36,7 +35,7 @@ buffer_write_ptr(buffer *b, size_t *nbyte) {
 
 inline bool
 buffer_can_read(buffer *b) {
-    return b->write - b->read > 0;
+        return b->write - b->read > 0;
 }
 
 inline uint8_t *
@@ -48,7 +47,7 @@ buffer_read_ptr(buffer *b, size_t *nbyte) {
 
 inline void
 buffer_write_adv(buffer *b, const ssize_t bytes) {
-    if(bytes > -1) {
+        if(bytes > -1) {
         b->write += (size_t) bytes;
         assert(b->write <= b->limit);
     }
@@ -56,7 +55,7 @@ buffer_write_adv(buffer *b, const ssize_t bytes) {
 
 inline void
 buffer_read_adv(buffer *b, const ssize_t bytes) {
-    if(bytes > -1) {
+        if(bytes > -1) {
         b->read += (size_t) bytes;
         assert(b->read <= b->write);
 
@@ -69,7 +68,7 @@ buffer_read_adv(buffer *b, const ssize_t bytes) {
 
 inline uint8_t
 buffer_read(buffer *b) {
-    uint8_t ret;
+        uint8_t ret;
     if(buffer_can_read(b)) {
         ret = *b->read;
         buffer_read_adv(b, 1);
@@ -81,7 +80,7 @@ buffer_read(buffer *b) {
 
 inline void
 buffer_write(buffer *b, uint8_t c) {
-    if(buffer_can_write(b)) {
+        if(buffer_can_write(b)) {
         *b->write = c;
         buffer_write_adv(b, 1);
     }
@@ -89,7 +88,7 @@ buffer_write(buffer *b, uint8_t c) {
 
 void
 buffer_compact(buffer *b) {
-    if(b->data == b->read) {
+        if(b->data == b->read) {
         // nada por hacer
     } else if(b->read == b->write) {
         b->read  = b->data;
