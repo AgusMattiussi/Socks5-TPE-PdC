@@ -44,8 +44,8 @@ struct std_conn_model{
 };
 
 struct buffers_t{
-    buffer read_buff;
-    buffer write_buff;
+    buffer read_buff; // CLI -> SRV
+    buffer write_buff; // SRV -> CLI
 
     uint8_t * aux_read_buff;
     uint8_t * aux_write_buff;

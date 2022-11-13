@@ -51,6 +51,7 @@ main(const int argc, const char **argv) {
     int returnCode = start_server(args.socks_addr, args.socks_port);
 
     return returnCode;
+    
     /*
     unsigned port = 1080;
 

@@ -2,6 +2,7 @@
 #include "stm/stm.h"
 #include "socks5/socks5.h"
 #include "selector/selector.h"
+#include "parsers/conn_parser.h"
 
 void close_socks5_connection(socks_conn_model * connection){
     if(connection->cli_conn->socket != -1){
@@ -16,7 +17,6 @@ void close_socks5_connection(socks_conn_model * connection){
     free(connection->buffers->aux_write_buff);
     free(connection);
 }
-
 
 void socks_connection_read(struct selector_key * key){
     //Recupero información y le paso al handler de lectura de stm
@@ -45,6 +45,7 @@ void socks_connection_write(struct selector_key * key){
         close(connection);
     }
 }
+
 void socks_connection_block(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
     enum socks_state state = stm_handler_block(&connection->stm, key);

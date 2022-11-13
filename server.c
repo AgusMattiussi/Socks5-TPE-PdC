@@ -90,7 +90,7 @@ static int start_socket(unsigned short port, char * addr,
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
     struct addrinfo * res = NULL;
 
-    //TODO: Check if itoa() of unsigned short works
+    //TODO: Check if sprintf of unsigned short works
     char service[256];
     int base = 10;
     sprintf(service, "%d", port);
