@@ -35,6 +35,10 @@ const struct fd_handler connection_actions_handler =
 {socks_connection_read,socks_connection_write,
 socks_connection_block,socks_connection_close};
 
+const struct fd_handler * 
+get_conn_actions_handler(){
+    return &connection_actions_handler;
+}
 
 static void passive_socks_socket_handler(struct selector_key * key){
     //TODO: Check if enough fds are available
@@ -73,7 +77,7 @@ static void passive_socks_socket_handler(struct selector_key * key){
     
     
     selector_status sel_register_ret = selector_register(selector, connection->cli_conn->socket,
-    &connection_actions_handler, OP_READ, connection);
+    get_conn_actions_handler(), OP_READ, connection);
     if(sel_register_ret != SELECTOR_SUCCESS){
         //close_socks5_connection(connection);
         return;
