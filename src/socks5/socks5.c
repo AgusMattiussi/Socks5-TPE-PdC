@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <string.h>
 
 /*----------------------
  |  Connection functions
@@ -168,6 +169,8 @@ conn_write(struct selector_key * key){
  /*----------------------------
  |  Request functions
  ---------------------------*/
+
+#define FIXED_RES_BYTES 6
 
 static struct addrinfo hint = {
     .ai_family = AF_UNSPEC,
@@ -373,9 +376,113 @@ req_write(struct selector_key * key){
     return ERROR;
 }
 
+static int 
+create_response(struct req_parser * parser, buffer * write_buff){
+    /*
+    Reminder of response structure:
+    +----+-----+-------+------+----------+----------+
+ *       |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+ *       +----+-----+-------+------+----------+----------+
+ *       | 1  |  1  | X'00' |  1   | Variable |    2     |
+ *       +----+-----+-------+------+----------+----------+
+ * (https://www.rfc-editor.org/rfc/rfc1928)
+    */ 
+    size_t byte_n;
+    uint8_t * buff_ptr = buffer_write_ptr(write_buff, byte_n);
+    int addr_len = -1;
+    enum req_atyp type = parser->res_parser.type;
+    uint8_t addr_ptr = NULL;
+    if(type == IPv4){
+        addr_len = IPv4_BYTES;
+        addr_ptr = (uint8_t *) &(parser->res_parser.addr.ipv4.sin_addr);
+    }
+    else if(type == IPv6){
+        addr_len = IPv6_BYTES;
+        addr_ptr = parser->res_parser.addr.ipv6.sin6_addr.s6_addr;
+    }
+    else if(type == FQDN){
+        addr_len = strlen((char *) parser->res_parser.addr.fqdn);
+        addr_ptr = parser->res_parser.addr.fqdn; 
+    }
+    else{
+        fprintf(stdout, "No compatible type recognized: %d", type);
+        return -1;
+    }
+    size_t space_needed = FIXED_RES_BYTES + addr_len + (type==FQDN?1:0);
+    if(byte_n >= space_needed && addr_ptr != NULL){
+         // If type is FQDN, we need to declare the amount of octets of the name
+        *buff_ptr++ = SOCKS_VERSION; //VER
+        *buff_ptr++ = parser->res_parser.state; //REP
+        *buff_ptr++ = 0x00; //REV
+        *buff_ptr++ = type; //ATYP
+        if(type==FQDN) *buff_ptr++ = addr_len; //Octet n
+        strncpy((char*)buff_ptr, (char*)addr_ptr, addr_len); //BND.ADDR
+        buff_ptr += addr_len;
+        uint8_t * port_tokenizer = (uint8_t *) &(parser->res_parser.port);
+        *buff_ptr++ = *port_tokenizer++;
+        *buff_ptr++ = *port_tokenizer;
+        buffer_write_adv(write_buff, (ssize_t)space_needed);
+        return (int)space_needed;
+    }
+
+
+    return -1;
+}
+
 static enum socks_state
 req_connect(struct selector_key * key){
-    
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct req_parser * parser = &connection->parsers->req_parser;
+    unsigned int error = 0;
+    int getsockopt_retval = -1;
+    getsockopt_retval = getsockopt(connection->src_conn->socket,
+                                    SOL_SOCKET, SO_ERROR, &error,
+                                    &(socklen_t){sizeof(unsigned int)});
+    if(getsockopt_retval == 0){
+        if(!error){
+            if(parser->type == FQDN){
+                freeaddrinfo(connection->resolved_addr);
+                connection->resolved_addr = NULL;
+            }
+            parser->res_parser.state = RES_SUCCESS;
+            parser->res_parser.port = parser->port;
+            int domain = connection->src_domain;
+            if(domain != AF_INET && domain != AF_INET6){
+                fprintf(stdout, "Domain is unrecognized");
+                return ERROR; //TODO: Check error management
+            }
+            if(domain == AF_INET){
+                parser->res_parser.type = IPv4;
+                memcpy(&parser->res_parser.addr, &connection->src_conn->addr, 
+                    sizeof(struct sockaddr_in));
+            }
+            else{
+                //IPv6
+                parser->res_parser.type = IPv6;
+                memcpy(&parser->res_parser.addr, &connection->src_conn->addr,
+                        sizeof(struct sockaddr_in6));
+            }
+            int selector_ret = -1;
+            selector_ret = selector_set_interest_key(key, OP_NOOP);
+            if(selector_ret == SELECTOR_SUCCESS){
+                selector_ret = selector_set_interest(key->s, connection->cli_conn->socket,
+                                    OP_WRITE);
+                if(selector_ret == SELECTOR_SUCCESS){
+                    int bytes_written = 
+                                create_response(parser, &connection->buffers->write_buff);
+                    if(bytes_written > -1){ //Could be
+                        return REQ_WRITE;
+                    }
+                }
+            }
+            return ERROR;
+        }
+
+    }
+    if(parser->type == FQDN){
+        freeaddrinfo(connection->resolved_addr);
+        connection->resolved_addr = NULL;
+    }
     return ERROR;
 }
 

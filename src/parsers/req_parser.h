@@ -62,6 +62,10 @@
 
 #define MAX_FQDN_SIZE 255
 
+#define IPv4_BYTES 4
+#define IPv6_BYTES 16
+
+
 enum req_state{
     REQ_VER,
     REQ_CMD,

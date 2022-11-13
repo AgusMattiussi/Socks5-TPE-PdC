@@ -5,9 +5,6 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#define IPv4_BYTES 4
-#define IPv6_BYTES 16
-
 #define REQ_DST_PORT_BYTES 2
 
 void 
