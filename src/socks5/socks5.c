@@ -183,7 +183,7 @@ conn_write(struct selector_key * key){
             //TODO: Acá falta arrancar la conexión, ya tenemos los parametros parseados necesarios
         case FQDN:
             // Resolución de nombres --> Bloqueante! Usar threads
-            
+            //TODO: ¡¡¡ME QUEDE ACÁ!!!
         case ADDR_TYPE_NONE:
     }
  }
