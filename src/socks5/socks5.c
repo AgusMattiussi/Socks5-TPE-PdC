@@ -339,6 +339,45 @@ req_read(struct selector_key * key){
     return REQ_READ;
 }
 
+static enum socks_state
+req_resolve(struct selector_key * key){
+    // Post thread completition state, we need to start the connection to the address
+    // resolved in start_connection();
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct req_parser * parser = &connection->parsers->req_parser;
+    if(connection->curr_addr != NULL){
+
+        memcpy(&connection->src_conn->addr, connection->curr_addr->ai_addr,
+                                connection->curr_addr->ai_addrlen);
+
+        connection->src_domain = connection->curr_addr->ai_family;
+        connection->src_conn->addr_len = connection->curr_addr->ai_addrlen;
+
+        connection->curr_addr = connection->curr_addr->ai_next;
+
+        return start_connection(parser, connection, key);
+    }
+    //Name was not resolved correctly
+    fprintf(stdout, "thread's name resolution failed!");
+    if(connection->resolved_addr != NULL){
+        connection->curr_addr = NULL;
+        freeaddrinfo(connection->resolved_addr);
+        connection->resolved_addr = NULL;
+    }
+    return ERROR;
+}
+
+static enum socks_state
+req_write(struct selector_key * key){
+
+    return ERROR;
+}
+
+static enum socks_state
+req_connect(struct selector_key * key){
+    
+    return ERROR;
+}
 
 
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
@@ -374,6 +413,7 @@ static const struct state_definition states[] = {
     },
     {
         .state = REQ_RESOLVE,
+        .on_block_ready = req_resolve,
     },
     {
         .state = REQ_CONNECT,
