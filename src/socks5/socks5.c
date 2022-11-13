@@ -3,6 +3,7 @@
 #include "../selector/selector.h"
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
+#include "../parsers/req_parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,14 +12,16 @@
  |  Connection functions
  -----------------------*/
 
-void conn_read_init(struct selector_key * key){
+void 
+conn_read_init(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     // TODO: Where to parse input? 
     // Update: We initialize parser when read is set
     start_connection_parser(&connection->parsers->connect_parser);
 }
 
-static enum socks_state conn_read(struct selector_key * key){
+static enum socks_state 
+conn_read(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     struct conn_parser * parser = &connection->parsers->connect_parser;
 
@@ -55,7 +58,8 @@ static enum socks_state conn_read(struct selector_key * key){
     return CONN_READ;
 }
 
-static enum socks_state conn_write(struct selector_key * key){
+static enum socks_state 
+conn_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
     // We need to build the write the server response to buffer
     size_t n_available;
@@ -94,12 +98,14 @@ static enum socks_state conn_write(struct selector_key * key){
  ---------------------------*/
 
 
- void auth_read_init(struct selector_key * key){
+ void 
+ auth_read_init(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     auth_parser_init(&connection->parsers->auth_parser);
  }
 
- static enum socks_state auth_read(struct selector_key * key){
+ static enum socks_state 
+ auth_read(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct auth_parser * parser = &connection->parsers->auth_parser;
 
@@ -137,7 +143,8 @@ static enum socks_state conn_write(struct selector_key * key){
     return AUTH_READ;
  }
 
- static enum socks_state auth_write(struct selector_key * key){
+ static enum socks_state 
+ auth_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
 
     size_t byte_n;
@@ -156,9 +163,66 @@ static enum socks_state conn_write(struct selector_key * key){
  |  Request functions
  ---------------------------*/
 
-void req_read_init(struct selector_key * key){
+ void
+ manage_req_connection(socks_conn_model * connection, struct req_parser * parser){
+    enum req_atyp type = parser->type;
+    switch(type){
+        case IPv4:
+            connection->src_domain = AF_INET;
+            parser->addr.ipv4.sin_port = parser->port;
+            connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
+            memcpy(&connection->src_conn->addr, &parser->addr.ipv4,
+            sizeof(struct sockaddr_in));
+            //TODO: Acá falta arrancar la conexión, ya tenemos los parametros parseados necesarios
+        case IPv6:
+            connection->src_domain = AF_INET6;
+            parser->addr.ipv6.sin6_port = parser->port;
+            connection->src_conn->addr_len = sizeof(struct sockaddr_in6);
+            memcpy(&connection->src_conn->addr, &parser->addr.ipv6,
+            sizeof(struct sockaddr_in6));
+            //TODO: Acá falta arrancar la conexión, ya tenemos los parametros parseados necesarios
+        case FQDN:
+            // Resolución de nombres --> Bloqueante! Usar threads
+            
+        case ADDR_TYPE_NONE:
+    }
+ }
+
+void 
+req_read_init(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *) key->data;
     req_parser_init(&connection->parsers->req_parser);
+}
+
+static enum socks_state 
+req_read(struct selector_key * key){
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct req_parser * parser = &connection->parsers->req_parser;
+
+    size_t byte_n;
+    uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
+    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, NULL); //TODO: Flags?
+    if(n_received <= 0) return ERROR;
+    buffer_write_adv(&connection->buffers->read_buff, n_received);
+
+    enum req_state state = req_parse_full(parser, &connection->buffers->read_buff);
+    if(state == REQ_ERROR){
+        fprintf(stdout, "Error parsing request message");
+        return ERROR;
+    }
+    if(state == REQ_DONE){
+        enum req_cmd cmd = parser->cmd;
+        switch(cmd){
+            case REQ_CMD_CONNECT:
+                manage_req_connection(connection, parser);
+                //TODO: SEGUI ACA!!!
+            case REQ_CMD_BIND:
+            case REQ_CMD_UDP:
+            case REQ_CMD_NONE:
+                fprintf(stdout, "REQ_CMD_NONE nunca debería ocurrir?");
+                return ERROR; //TODO: esto no estoy seguro
+        }
+    }
 }
 
 
