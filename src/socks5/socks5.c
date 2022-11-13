@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 /*----------------------
  |  Connection functions
@@ -163,8 +164,35 @@ conn_write(struct selector_key * key){
  |  Request functions
  ---------------------------*/
 
- void
- manage_req_connection(socks_conn_model * connection, struct req_parser * parser){
+static void *
+name_resolving_thread(void * arg){
+    struct selector_key * aux_key = (struct selector_key *) arg; 
+    socks_conn_model * connection = (socks_conn_model *)aux_key->data;
+
+    //TODO: FINISH METHOD!!!
+}
+
+static enum socks_state
+set_name_resolving_thread(struct selector_key * key){
+    struct selector_key * aux_key = malloc(sizeof(*key));
+    if(aux_key == NULL){
+        fprintf(stdout, "Error in malloc of aux_key");
+        return ERROR; //TODO: Check error return
+    }
+    memcpy(aux_key, key, sizeof(*key));
+    pthread_t thread_id;
+    int ret_thread_create = pthread_create(thread_id, NULL, &name_resolving_thread, aux_key);
+    if(ret_thread_create == 0){
+        int ret_set_selector = selector_set_interest_key(key, OP_NOOP);
+        return ret_set_selector == SELECTOR_SUCCESS?REQ_RESOLVE:ERROR;
+    }
+    free(aux_key);
+    return ERROR; //TODO: Check error handling
+}
+
+void
+manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
+                        struct selector_key * key){
     enum req_atyp type = parser->type;
     switch(type){
         case IPv4:
@@ -183,10 +211,13 @@ conn_write(struct selector_key * key){
             //TODO: Acá falta arrancar la conexión, ya tenemos los parametros parseados necesarios
         case FQDN:
             // Resolución de nombres --> Bloqueante! Usar threads
+
+            return set_name_resolving_thread(key);
+
             //TODO: ¡¡¡ME QUEDE ACÁ!!!
         case ADDR_TYPE_NONE:
     }
- }
+}
 
 void 
 req_read_init(struct selector_key * key){
@@ -214,7 +245,7 @@ req_read(struct selector_key * key){
         enum req_cmd cmd = parser->cmd;
         switch(cmd){
             case REQ_CMD_CONNECT:
-                manage_req_connection(connection, parser);
+                manage_req_connection(connection, parser, key);
                 //TODO: SEGUI ACA!!!
             case REQ_CMD_BIND:
             case REQ_CMD_UDP:
