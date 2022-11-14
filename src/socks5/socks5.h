@@ -44,7 +44,7 @@ struct buffers_t{
 
 struct copy_model_t{
     int fd;
-    struct buffers_t buffers;
+    struct buffers_t * buffers;
     fd_interest interests;
     fd_interest connection_interests;
     struct copy * other;
@@ -60,7 +60,7 @@ typedef struct socks_conn_model{
 
     struct std_conn_model * cli_conn;
     struct std_conn_model * src_conn;
-    int src_domain;
+    int src_addr_family;
 
     struct buffers_t * buffers;
     struct parsers_t * parsers;
@@ -72,7 +72,6 @@ typedef struct socks_conn_model{
 
     // POP3?
 
-    //Aux structures for copy instance
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;
 

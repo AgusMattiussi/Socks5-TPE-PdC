@@ -243,7 +243,7 @@ set_name_resolving_thread(struct selector_key * key){
 static enum socks_state
 start_connection(struct req_parser * parser, socks_conn_model * connection,
                     struct selector_key * key){
-    connection->src_conn->socket = socket(connection->src_domain,
+    connection->src_conn->socket = socket(connection->src_addr_family,
         SOCK_STREAM | SOCK_NONBLOCK, 0);
     if(connection->src_conn->socket == -1){
         fprintf(stdout, "Socket creation failed");
@@ -274,7 +274,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
     enum req_atyp type = parser->type;
     switch(type){
         case IPv4:
-            connection->src_domain = AF_INET;
+            connection->src_addr_family = AF_INET;
             parser->addr.ipv4.sin_port = parser->port;
             connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
             memcpy(&connection->src_conn->addr, &parser->addr.ipv4,
@@ -282,7 +282,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
             enum socks_state state = start_connection(parser, connection, key);
             return state;
         case IPv6:
-            connection->src_domain = AF_INET6;
+            connection->src_addr_family = AF_INET6;
             parser->addr.ipv6.sin6_port = parser->port;
             connection->src_conn->addr_len = sizeof(struct sockaddr_in6);
             memcpy(&connection->src_conn->addr, &parser->addr.ipv6,
@@ -298,7 +298,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
     }
 }
 
-void 
+static void 
 req_read_init(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *) key->data;
     req_parser_init(&connection->parsers->req_parser);
@@ -353,7 +353,7 @@ req_resolve(struct selector_key * key){
         memcpy(&connection->src_conn->addr, connection->curr_addr->ai_addr,
                                 connection->curr_addr->ai_addrlen);
 
-        connection->src_domain = connection->curr_addr->ai_family;
+        connection->src_addr_family = connection->curr_addr->ai_family;
         connection->src_conn->addr_len = connection->curr_addr->ai_addrlen;
 
         connection->curr_addr = connection->curr_addr->ai_next;
@@ -446,7 +446,7 @@ req_connect(struct selector_key * key){
             }
             parser->res_parser.state = RES_SUCCESS;
             parser->res_parser.port = parser->port;
-            int domain = connection->src_domain;
+            int domain = connection->src_addr_family;
             if(domain != AF_INET && domain != AF_INET6){
                 fprintf(stdout, "Domain is unrecognized");
                 return ERROR; //TODO: Check error management
@@ -511,6 +511,49 @@ req_write(struct selector_key * key){
     return ERROR;
 }
 
+ /*----------------------------
+ |  Copy functions
+ ---------------------------*/
+
+static void
+set_copy_struct_config(int fd, struct copy_model_t * copy, 
+                        buffer wr_buff, buffer rd_buff, struct copy_model_t * other_copy){
+    copy->fd = fd;
+    copy->buffers->write_buff = wr_buff;
+    copy->buffers->read_buff = rd_buff;
+    copy->interests = OP_READ;
+    copy->connection_interests = OP_READ | OP_WRITE;
+    copy->other = other_copy;
+}
+
+static void
+copy_init(struct selector_key * key){
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct copy_model_t * cli_copy = &connection->cli_copy;
+    struct copy_model_t * src_copy = &connection->src_copy;
+
+    //TODO: Chequear si hice esto bien, no me acuerdo.
+    set_copy_struct_config(connection->cli_conn->socket, cli_copy, 
+                            connection->buffers->write_buff,
+                            connection->buffers->read_buff, src_copy);
+
+    set_copy_struct_config(connection->src_conn->socket, src_copy,
+                            connection->buffers->read_buff,
+                            connection->buffers->write_buff, cli_copy);
+
+    //TODO: No se que mas hay que configurar del copy pero dejo el TODO como marca
+}
+
+static enum socks_state
+copy_read(struct selector_key * key){
+    return ERROR;
+}
+
+static enum socks_state 
+copy_write(struct selector_key * key){
+    return ERROR;
+}
+
 
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
 static const struct state_definition states[] = {
@@ -557,6 +600,9 @@ static const struct state_definition states[] = {
     },
     {
         .state = COPY,
+        .on_arrival = copy_init,
+        .on_read_ready = copy_read,
+        .on_write_ready = copy_write,
     },
     {
         .state = ERROR,
