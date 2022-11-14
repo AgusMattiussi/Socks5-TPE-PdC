@@ -470,18 +470,43 @@ req_connect(struct selector_key * key){
                 if(selector_ret == SELECTOR_SUCCESS){
                     int bytes_written = 
                                 create_response(parser, &connection->buffers->write_buff);
-                    if(bytes_written > -1){ //Could be
+                    if(bytes_written > -1){
                         return REQ_WRITE;
                     }
                 }
             }
             return ERROR;
         }
-
     }
     if(parser->type == FQDN){
         freeaddrinfo(connection->resolved_addr);
         connection->resolved_addr = NULL;
+    }
+    return ERROR;
+}
+
+static enum socks_state
+req_write(struct selector_key * key){
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct req_parser * parser = &connection->parsers->req_parser;
+
+    size_t byte_n;
+    uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &byte_n);
+    ssize_t bytes_sent = send(connection->cli_conn->socket, buff_ptr,
+                            byte_n, NULL); //TODO: Flags?
+    if(bytes_sent == -1){
+        fprintf(stdout, "Sending bytes in req_write failed");
+        return ERROR;
+    }
+
+    buffer_read_adv(&connection->buffers->write_buff, bytes_sent);
+    if(buffer_can_read(&connection->buffers->write_buff)) return REQ_WRITE;
+    if(parser->res_parser.state != RES_SUCCESS) return DONE; // No copy to do now, just end the connection
+    selector_status selector_ret = selector_set_interest_key(key, OP_READ);
+    if(selector_ret==SELECTOR_SUCCESS){
+        selector_ret = selector_set_interest(key->s, connection->src_conn->socket,
+                                            OP_READ);
+        return selector_ret==SELECTOR_SUCCESS?COPY:ERROR;
     }
     return ERROR;
 }
@@ -524,9 +549,11 @@ static const struct state_definition states[] = {
     },
     {
         .state = REQ_CONNECT,
+        .on_write_ready = req_connect,
     },
     {
         .state = REQ_WRITE,
+        .on_write_ready = req_write,
     },
     {
         .state = COPY,

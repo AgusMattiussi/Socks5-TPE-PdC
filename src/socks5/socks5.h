@@ -27,15 +27,6 @@ enum socks_state{
     ERROR,
 };
 
-struct copy_model{
-    int fd;
-    buffer *read_buff;
-    buffer *write_buff;
-    fd_interest interests;
-    fd_interest connection_interests;
-    struct copy * other;
-};
-
 struct std_conn_model{
     struct sockaddr_storage addr;
     socklen_t addr_len;
@@ -49,6 +40,14 @@ struct buffers_t{
 
     uint8_t * aux_read_buff;
     uint8_t * aux_write_buff;
+};
+
+struct copy_model_t{
+    int fd;
+    struct buffers_t buffers;
+    fd_interest interests;
+    fd_interest connection_interests;
+    struct copy * other;
 };
 
 struct parsers_t{
@@ -74,10 +73,9 @@ typedef struct socks_conn_model{
     // POP3?
 
     //Aux structures for copy instance
-    struct copy_model cli_copy;
-    struct copy_model src_copy;
+    struct copy_model_t cli_copy;
+    struct copy_model_t src_copy;
 
-    const struct user * user;
 } socks_conn_model;
 
 struct state_definition * socks5_all_states();
