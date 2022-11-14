@@ -47,7 +47,7 @@ struct copy_model_t{
     struct buffers_t * buffers;
     fd_interest interests;
     fd_interest connection_interests;
-    struct copy * other;
+    struct copy_model_t * other;
 };
 
 struct parsers_t{

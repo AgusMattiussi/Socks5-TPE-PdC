@@ -380,7 +380,7 @@ static int
 create_response(struct req_parser * parser, buffer * write_buff){
     /*
     Reminder of response structure:
-    +----+-----+-------+------+----------+----------+
+         +----+-----+-------+------+----------+----------+
  *       |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
  *       +----+-----+-------+------+----------+----------+
  *       | 1  |  1  | X'00' |  1   | Variable |    2     |
@@ -419,13 +419,11 @@ create_response(struct req_parser * parser, buffer * write_buff){
         strncpy((char*)buff_ptr, (char*)addr_ptr, addr_len); //BND.ADDR
         buff_ptr += addr_len;
         uint8_t * port_tokenizer = (uint8_t *) &(parser->res_parser.port);
-        *buff_ptr++ = *port_tokenizer++;
+        *buff_ptr++ = *port_tokenizer++; //BND.PORT
         *buff_ptr++ = *port_tokenizer;
         buffer_write_adv(write_buff, (ssize_t)space_needed);
         return (int)space_needed;
     }
-
-
     return -1;
 }
 
@@ -546,12 +544,95 @@ copy_init(struct selector_key * key){
 
 static enum socks_state
 copy_read(struct selector_key * key){
-    return ERROR;
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
+        &connection->cli_copy: key->fd == connection->src_conn->socket?
+        &connection->src_copy: NULL;
+    if(copy == NULL) return ERROR;
+
+    if(buffer_can_write(&copy->buffers->write_buff)){
+        size_t byte_n;
+        uint8_t * buff_ptr = buffer_write_ptr(&copy->buffers->write_buff, &byte_n);
+        ssize_t bytes_rcvd = recv(key->fd, buff_ptr, byte_n, NULL); //TODO: Flags?
+        if(bytes_rcvd > 0){
+            buffer_write_adv(&copy->buffers->write_buff, bytes_rcvd);
+            copy->other->interests = copy->other->interests | OP_WRITE;
+            copy->other->interests = copy->other->interests & copy->other->connection_interests;
+            selector_status selector_ret = 
+                selector_set_interest(key->s, copy->other->fd, copy->other->interests);
+            return selector_ret != SELECTOR_SUCCESS?ERROR:COPY;
+        }
+        uint8_t complement_mask = ~OP_READ;
+        copy->connection_interests = copy->connection_interests & complement_mask;
+        copy->interests = copy->interests & copy->connection_interests;
+        selector_status selector_ret = selector_set_interest(key->s, copy->fd,
+                                        copy->interests);
+        if(selector_ret != SELECTOR_SUCCESS) return ERROR;
+        //TODO: Close read copy.>fd connection. How to?
+        // Solution: 
+        // https://stackoverflow.com/questions/570793/how-to-stop-a-read-operation-on-a-socket
+        // and (from top answer) man -s 2 shutdown
+        int shutdown_ret = shutdown(copy->fd, SHUT_RD);
+        if(shutdown_ret < 0){
+            fprintf(stdout, "Shutdown failed");
+            //return ERROR; //TODO: Should we return fail upon socket closure error?
+        }
+        //No more read for copy->fd socket
+        if(!buffer_can_read(&(copy->buffers->write_buff))){
+            copy->other->interests = copy->other->interests & 
+                    copy->other->connection_interests;
+            selector_status selector_ret = 
+                    selector_set_interest(key->s, copy->other->fd, copy->other->interests);
+            if(selector_ret != SELECTOR_SUCCESS) return ERROR;
+            int shutdown_ret = shutdown(copy->other->fd, SHUT_WR);
+            if(shutdown_ret < 0){
+                fprintf(stdout, "Shutdown failed");
+                //return ERROR; //TODO: Should we return fail upon socket closure error?
+            }
+            // No more write for copy->other->fd socket
+        }
+        return copy->connection_interests == OP_NOOP?
+               (copy->other->connection_interests == OP_NOOP? DONE:COPY)
+               :COPY;
+    }
+    // Switch interests
+    uint8_t complement_mask = ~OP_READ; //OP_WRITE
+    copy->interests = copy->interests & complement_mask; //TODO: Que pongo acá
+    copy->interests = copy->interests & copy->connection_interests;
+    selector_status selector_ret = selector_set_interest(key->s, key->fd, copy->interests);
+    return COPY;
 }
 
 static enum socks_state 
 copy_write(struct selector_key * key){
-    return ERROR;
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
+        &connection->cli_copy: key->fd == connection->src_conn->socket?
+        &connection->src_copy: NULL;
+    if(copy == NULL) return ERROR;
+
+    size_t byte_n;
+    uint8_t * buff_ptr = buffer_read_ptr(&copy->buffers->read_buff, &byte_n);
+    ssize_t bytes_sent = send(key->fd, buff_ptr, byte_n, NULL); //TODO: Flags?
+
+    if(bytes_sent > 0){
+        buffer_read_adv(&copy->buffers->read_buff, bytes_sent);
+        copy->other->interests = copy->other->interests | OP_READ;
+        copy->other->interests = copy->other->interests & copy->other->connection_interests;
+        selector_status selector_ret = selector_set_interest(key->s, copy->other->fd, copy->other->interests);
+        if(!buffer_can_read(&copy->buffers->read_buff)){
+            uint8_t complement_mask = ~OP_WRITE;
+            copy->interests = copy->interests & complement_mask;
+            copy->interests = copy->interests & copy->other->interests;
+            selector_ret = selector_set_interest(key->s, copy->fd, copy->interests);
+            uint8_t should_close = copy->connection_interests & OP_WRITE;
+            if(should_close == 0){
+                shutdown(copy->fd, SHUT_WR);
+            }
+            return COPY;
+        }
+    }
+    return ERROR; //TODO: error management?
 }
 
 
