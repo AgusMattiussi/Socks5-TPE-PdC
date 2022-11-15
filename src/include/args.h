@@ -22,7 +22,7 @@ struct socks5args {
     char           *socks_addr;
     unsigned short  socks_port;
 
-    char *          mng_addr;
+    char           *mng_addr;
     unsigned short  mng_port;
 
     bool            disectors_enabled;

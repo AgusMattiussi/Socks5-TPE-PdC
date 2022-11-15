@@ -74,6 +74,4 @@ dkms.conf
 *.patch
 .DS_Store
 Thumbs.db
-bin/
-
-# End of https://www.toptal.com/developers/gitignore/api/c
+.idea/*
