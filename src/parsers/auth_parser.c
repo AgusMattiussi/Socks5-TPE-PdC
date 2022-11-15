@@ -23,8 +23,8 @@ void set_len_to_parse(struct auth_parser * parser, uint8_t to_parse){
     }
     else{
         parser->to_parse = to_parse;
-        parser->state = current == AUTH_ULEN?AUTH_UNAME:AUTH_PASSWD;
-        parser->where_to = current == AUTH_ULEN?parser->username:parser->password;
+        parser->state = current == AUTH_ULEN ? AUTH_UNAME : AUTH_PASSWD;
+        parser->where_to = current == AUTH_ULEN ? parser->username : parser->password;
         parser->where_to[to_parse]='\0'; //Delimiting end of string dynamically.
     }
 }

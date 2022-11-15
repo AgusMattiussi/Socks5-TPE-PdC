@@ -1,6 +1,6 @@
 #include "socks5.h"
-#include "../stm/stm.h"
-#include "../selector/selector.h"
+#include "../include/stm.h"
+#include "../include/selector.h"
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
 #include "../parsers/req_parser.h"

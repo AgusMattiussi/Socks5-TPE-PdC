@@ -34,7 +34,7 @@ void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
             }
             else{
                 parser->state = CONN_ERROR;
-                fprintf(STDOUT_FILENO, "Invalid socks version.");
+                fprintf(stdout, "Invalid socks version.");
                 break;
             }
         case CONN_NMETHODS:

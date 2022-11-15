@@ -29,6 +29,8 @@
 #include "include/selector.h"
 #include "include/buffer.h"
 #include "include/args.h"
+#include "include/server.h"
+
 //TODO: #include "socks5nio.h"
 
 #define DEST_PORT 9090
@@ -61,7 +63,7 @@ sigterm_handler(const int signal) {
 }
 
 int
-main(const int argc, const char **argv) {
+main(const int argc, char **argv) {
     unsigned port = 1080;
     /* char * destPort = "9090";
     char * destIp = "localhost"; */

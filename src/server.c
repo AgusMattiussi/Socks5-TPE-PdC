@@ -1,23 +1,5 @@
-#include "src/buffer/buffer.h"
-#include "src/netutils/netutils.h"
-#include "src/parser/parser_utils.h"
-#include "src/parser/parser.h"
-#include "src/selector/selector.h"
-#include "src/stm/stm.h"
-#include "src/socks5/socks5.h"
-#include "src/conn_handler.h"
+#include "include/server.h"
 
-#include <sys/signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>  
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
-#include "server.h"
-#include "selector.h"
 
 #define INITIAL_N 20
 #define MAX_QUEUE 50
@@ -31,14 +13,16 @@ static fd_selector selector;
 
 const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
 //TODO: Should this functions have a &? 
-const struct fd_handler connection_actions_handler = 
-{socks_connection_read,socks_connection_write,
-socks_connection_block,socks_connection_close};
 
-const struct fd_handler * 
-get_conn_actions_handler(){
+const struct fd_handler connection_actions_handler = { 
+    socks_connection_read,socks_connection_write,
+    socks_connection_block,socks_connection_close
+};
+
+const struct fd_handler * get_conn_actions_handler() {
     return &connection_actions_handler;
 }
+
 
 static void passive_socks_socket_handler(struct selector_key * key){
     //TODO: Check if enough fds are available
@@ -98,7 +82,7 @@ static int start_socket(unsigned short port, char * addr,
     char service[256];
     int base = 10;
     sprintf(service, "%d", port);
-    printf(service);
+    printf("%s\n", service);
 
     int ret_addrinfo;
     ret_addrinfo = getaddrinfo(addr, service, &hints, &res);

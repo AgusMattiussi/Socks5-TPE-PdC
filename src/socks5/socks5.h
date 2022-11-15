@@ -54,9 +54,9 @@ struct copy_model_t{
 };
 
 struct parsers_t{
-    struct conn_parser connect_parser;
-    struct auth_parser auth_parser;
-    struct req_parser req_parser;
+    struct conn_parser * connect_parser;
+    struct auth_parser * auth_parser;
+    struct req_parser * req_parser;
 };
 
 typedef struct socks_conn_model{
