@@ -74,6 +74,7 @@ dkms.conf
 *.patch
 .DS_Store
 Thumbs.db
+.idea/*
 bin/
 .gdb*
 

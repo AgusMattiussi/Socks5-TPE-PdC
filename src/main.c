@@ -25,9 +25,12 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
-//TODO: #include "socks5.h"
+#include "socks5/socks5.h"
 #include "include/selector.h"
 #include "include/buffer.h"
+#include "include/args.h"
+#include "include/server.h"
+
 //TODO: #include "socks5nio.h"
 
 #define DEST_PORT 9090
@@ -64,13 +67,24 @@ sigterm_handler(const int signal) {
 }
 
 int
-main(const int argc, const char **argv) {
+main(const int argc, char **argv) {
     unsigned port = 1080;
-    char * destPort = "9090";
-    char * destIp = "localhost";
+    /* char * destPort = "9090";
+    char * destIp = "localhost"; */
 
+    signal(SIGTERM, sigterm_handler);
+    signal(SIGINT, sigterm_handler);
 
-    if(argc == 1) {
+    close(STDIN_FILENO);
+
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+
+    int returnCode = start_server(args.socks_addr, args.socks_port);
+
+    return returnCode;
+
+    /* if(argc == 1) {
         // utilizamos el default
     } else if(argc >= 2 || argc<=4) {
         char *end     = 0;
@@ -93,7 +107,7 @@ main(const int argc, const char **argv) {
     } else {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         return 1;
-    }
+    } 
 
     // no tenemos nada que leer de stdin
     close(0);
@@ -101,9 +115,6 @@ main(const int argc, const char **argv) {
     const char       *err_msg = NULL;
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
-
-    /* clientBuffer = malloc(sizeof(struct buffer));
-    serverBuffer = malloc(sizeof(struct buffer)); */
 
     buffer_init(&clientBuffer, 1024, clientBufferData);
     buffer_init(&serverBuffer, 1024, serverBufferData);
@@ -171,8 +182,8 @@ main(const int argc, const char **argv) {
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         goto finally;
-    }
-
+    } */
+/* 
     // =================== Server para el proxy TCP ===================
     printf("CREANDO SOCKET PARA EL PROXY TCP\n");
 	struct addrinfo addrCriteria;                   // Criteria for address match
@@ -215,42 +226,7 @@ main(const int argc, const char **argv) {
     printf("\nLISTO\n\n");
 
     // ==============================================================================================
-
-    for(;!done;) {
-        err_msg = NULL;
-        ss = selector_select(selector);
-        if(ss != SELECTOR_SUCCESS) {
-            err_msg = "serving";
-            goto finally;
-        }
-    }
-    if(err_msg == NULL) {
-        err_msg = "closing";
-    }
-
-    int ret = 0;
-finally:
-    if(ss != SELECTOR_SUCCESS) {
-        fprintf(stderr, "%s: %s\n", (err_msg == NULL) ? "": err_msg,
-                                  ss == SELECTOR_IO
-                                      ? strerror(errno)
-                                      : selector_error(ss));
-        ret = 2;
-    } else if(err_msg) {
-        perror(err_msg);
-        ret = 1;
-    }
-    if(selector != NULL) {
-        selector_destroy(selector);
-    }
-    selector_close();
-
-    //TODO: socksv5_pool_destroy();
-
-    if(server >= 0) {
-        close(server);
-    }
-    return ret;
+ */
 }
 
 
@@ -369,7 +345,7 @@ void newFdBlock(struct selector_key *key){
     printf("Bloqueando\n");
 }
 
-void socksv5_passive_accept(struct selector_key * key) {
+/* void socksv5_passive_accept(struct selector_key * key) {
     int master_fd = key->fd;
     
     if(clientFd != -1)
@@ -392,4 +368,4 @@ void socksv5_passive_accept(struct selector_key * key) {
         printf("Error en el register \n");
     }
 
-}
+} */
