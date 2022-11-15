@@ -125,7 +125,8 @@ conn_write(struct selector_key * key){
             fprintf(stdout, "Not enough space to send connection response.");
             return ERROR;
         }
-        write_ptr[0] = AUTH_VERSION; write_ptr[1] = is_authenticated;
+        write_ptr[0] = AUTH_VERSION;
+        write_ptr[1] = is_authenticated;
         buffer_write_adv(&connection->buffers->write_buff, 2);
         return AUTH_WRITE;
     }

@@ -49,7 +49,7 @@ We need to check after parsing the incoming request whether the user exists, and
 are valid
 */
 
-const uint8_t AUTH_VERSION = 0x01;
+#define AUTH_VERSION 0x01
 #define MAX_LEN 255
 
 enum auth_state{

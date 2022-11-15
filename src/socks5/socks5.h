@@ -93,4 +93,6 @@ typedef struct socks_conn_model{
 
 struct state_definition * socks5_all_states();
 
+void close_socks5_connection(socks_conn_model * connection);
+
 #endif
