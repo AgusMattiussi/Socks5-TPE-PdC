@@ -25,10 +25,10 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
-#include "src/socks5/socks5.h"
+#include "socks5/socks5.h"
 #include "include/selector.h"
 #include "include/buffer.h"
-#include "src/include/args.h"
+#include "include/args.h"
 //TODO: #include "socks5nio.h"
 
 #define DEST_PORT 9090

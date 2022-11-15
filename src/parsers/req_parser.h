@@ -1,6 +1,13 @@
-#include "buffer.h"
+#ifndef REQ_PARSER_H
+#define REQ_PARSER_H
+
+#include "../include/buffer.h"
 #include <netinet/in.h>
 #include <stdint.h>
+#include "conn_parser.h"
+#include <stdio.h>
+#include <string.h>
+
 
 /*
 4.  Requests
@@ -134,3 +141,5 @@ struct req_parser{
 
 void req_parser_init(struct req_parser * parser);
 enum req_state req_parse_full(struct req_parser * parser, buffer * buff);
+
+#endif

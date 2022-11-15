@@ -1,8 +1,5 @@
-#include "conn_handler.h"
-#include "stm/stm.h"
-#include "socks5/socks5.h"
-#include "selector/selector.h"
-#include "parsers/conn_parser.h"
+#include "include/conn_handler.h"
+
 
 void close_socks5_connection(socks_conn_model * connection){
     if(connection->cli_conn->socket != -1){

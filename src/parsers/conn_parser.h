@@ -1,3 +1,5 @@
+#ifndef CONN_PARSER_H
+#define CONN_PARSER_H
 /*
 
 Functions to parse an incoming connection bytes'.
@@ -43,7 +45,9 @@ For the scope of this project, we will be covering authentication methods 0x00, 
 */
 
 #include <stdint.h>
-#include "../buffer/buffer.h"
+#include "../include/buffer.h"
+#include "../include/selector.h"
+#include "../include/conn_handler.h"
 
 const static uint8_t SOCKS_VERSION = 0x05;
 
@@ -74,3 +78,5 @@ struct conn_parser {
 void start_connection_parser(struct conn_parser * parser);
 void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse);
 enum conn_state conn_parse_full(struct conn_parser * parser, buffer * buff);
+
+#endif

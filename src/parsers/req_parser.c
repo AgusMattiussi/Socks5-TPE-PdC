@@ -1,9 +1,4 @@
 #include "req_parser.h"
-#include "conn_parser.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <netinet/in.h>
 
 #define REQ_DST_PORT_BYTES 2
 

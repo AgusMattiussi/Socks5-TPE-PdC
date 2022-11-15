@@ -1,3 +1,11 @@
+#ifndef AUTH_PARSER_H
+#define AUTH_PARSER_H
+
+#include "../include/buffer.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 /*
 Following the connection request and reply, we may now move on to directly using the
 server (if no auth was set) or we can enter an user/pass negotiation. For this, the RFC found
@@ -64,3 +72,5 @@ struct auth_parser{
 
 void auth_parser_init(struct auth_parser * parser);
 enum auth_state auth_parse_full(struct auth_parser * parser, buffer * buff);
+
+#endif

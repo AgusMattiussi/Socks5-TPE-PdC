@@ -1,5 +1,8 @@
-#include "../stm/stm.h"
-#include "../buffer/buffer.h"
+#ifndef SOCKS5_H
+#define SOCKS5_H
+
+#include "../include/stm.h"
+#include "../include/buffer.h"
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
 #include "../parsers/req_parser.h"
@@ -78,3 +81,5 @@ typedef struct socks_conn_model{
 } socks_conn_model;
 
 struct state_definition * socks5_all_states();
+
+#endif

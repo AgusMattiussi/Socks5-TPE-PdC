@@ -1,8 +1,4 @@
 #include "auth_parser.h"
-#include "../buffer/buffer.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 void auth_parser_init(struct auth_parser * parser){
     parser->state = AUTH_VER;
