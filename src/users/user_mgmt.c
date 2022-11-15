@@ -1,5 +1,3 @@
-#include <stdint.h>
-#include <stdbool.h>
 #include "user_mgmt.h"
 
 #define MAX_USERS 10

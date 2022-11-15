@@ -118,8 +118,7 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
     }
 }
 
-static enum req_state 
-req_parse_full(struct req_parser * parser, buffer * buff){
+enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
     while(buffer_can_read(buff)){
         uint8_t to_parse = buffer_read(buff);
         req_parse_byte(parser, to_parse);

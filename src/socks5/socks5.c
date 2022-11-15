@@ -1,40 +1,23 @@
 #include "socks5.h"
-#include "../include/stm.h"
-#include "../include/selector.h"
-#include "../parsers/conn_parser.h"
-#include "../parsers/auth_parser.h"
-#include "../parsers/req_parser.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <netdb.h>
-#include <sys/types.h>  
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <errno.h>
-#include <string.h>
 
 /*----------------------
  |  Connection functions
  -----------------------*/
 
-void 
-conn_read_init(struct selector_key * key){
+void conn_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     // TODO: Where to parse input? 
     // Update: We initialize parser when read is set
-    start_connection_parser(&connection->parsers->connect_parser);
+    start_connection_parser(connection->parsers->connect_parser);
 }
 
-static enum socks_state 
-conn_read(struct selector_key * key){
+static enum socks_state conn_read(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct conn_parser * parser = &connection->parsers->connect_parser;
+    struct conn_parser * parser = connection->parsers->connect_parser;
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, NULL); //TODO:Flags?
+    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO:Flags?
 
     if(n_received <= 0) return ERROR;
     buffer_write_adv(&connection->buffers->read_buff, n_received);
@@ -70,10 +53,10 @@ conn_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
     // We need to build the write the server response to buffer
     size_t n_available;
-    uint8_t buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &n_available);
-    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, n_available, NULL); //TODO: Flags?
+    uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &n_available);
+    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, n_available, 0); //TODO: Flags?
     if(n_sent == -1){
-        fpritnf(stdout, "Error sending bytes to client socket.");
+        fprintf(stdout, "Error sending bytes to client socket.");
         return ERROR;
     }
     buffer_read_adv(&connection->buffers->write_buff, n_sent);
@@ -86,7 +69,7 @@ conn_write(struct selector_key * key){
     selector_status status = selector_set_interest_key(key, OP_READ);
     if(status != SELECTOR_SUCCESS) return ERROR;
 
-    switch(connection->parsers->connect_parser.auth){
+    switch(connection->parsers->connect_parser->auth){
         case NO_AUTH:
             return REQ_READ;
         case USER_PASS:
@@ -105,20 +88,19 @@ conn_write(struct selector_key * key){
  ---------------------------*/
 
 
- void 
- auth_read_init(struct selector_key * key){
+ void auth_read_init(const unsigned state, struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    auth_parser_init(&connection->parsers->auth_parser);
+    auth_parser_init(connection->parsers->auth_parser);
  }
 
  static enum socks_state 
  auth_read(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct auth_parser * parser = &connection->parsers->auth_parser;
+    struct auth_parser * parser = connection->parsers->auth_parser;
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, NULL); //TODO: Flags?
+    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
     if(n_received <= 0) return ERROR;
     buffer_write_adv(&connection->buffers->read_buff, n_received);
 
@@ -129,8 +111,8 @@ conn_write(struct selector_key * key){
     }
     if(ret_state == AUTH_DONE){ 
         //TODO: Build process_authentication_request (declared, not built yet)
-        uint8_t is_authenticated = process_authentication_request(&parser->username, 
-                                                                  &parser->password);
+        uint8_t is_authenticated = process_authentication_request(parser->username, 
+                                                                  parser->password);
 
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;
@@ -156,7 +138,7 @@ conn_write(struct selector_key * key){
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &byte_n);
-    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, byte_n, NULL); //TODO: Flags?
+    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
     if(n_sent <= 0) return ERROR;
     buffer_read_adv(&connection->buffers->write_buff, n_sent);
     if(buffer_can_read(&connection->buffers->write_buff)){
@@ -205,10 +187,10 @@ name_resolving_thread(void * arg){
     //TODO: Discutr un poco esto
     pthread_detach(pthread_self());
     char aux_buff[7];
-    snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(connection->parsers->req_parser.port));
+    snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(connection->parsers->req_parser->port));
     int ret = -1;
     struct addrinfo aux_hint = get_hint();
-    ret = getaddrinfo((char *) connection->parsers->req_parser.addr.fqdn,
+    ret = getaddrinfo((char *) connection->parsers->req_parser->addr.fqdn,
                     aux_buff, &aux_hint, &connection->resolved_addr);
     if(ret != 0){
         fprintf(stdout, "Could not resolve FQDN.");
@@ -230,7 +212,7 @@ set_name_resolving_thread(struct selector_key * key){
         return ERROR; //TODO: Check error return
     }
     memcpy(aux_key, key, sizeof(*key));
-    pthread_t thread_id;
+    pthread_t * thread_id;
     int ret_thread_create = pthread_create(thread_id, NULL, &name_resolving_thread, aux_key);
     if(ret_thread_create == 0){
         int ret_set_selector = selector_set_interest_key(key, OP_NOOP);
@@ -272,6 +254,7 @@ static enum socks_state
 manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
                         struct selector_key * key){
     enum req_atyp type = parser->type;
+    enum socks_state state;
     switch(type){
         case IPv4:
             connection->src_addr_family = AF_INET;
@@ -279,7 +262,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
             connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
             memcpy(&connection->src_conn->addr, &parser->addr.ipv4,
                                             sizeof(struct sockaddr_in));
-            enum socks_state state = start_connection(parser, connection, key);
+            state = start_connection(parser, connection, key);
             return state;
         case IPv6:
             connection->src_addr_family = AF_INET6;
@@ -287,7 +270,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
             connection->src_conn->addr_len = sizeof(struct sockaddr_in6);
             memcpy(&connection->src_conn->addr, &parser->addr.ipv6,
                                             sizeof(struct sockaddr_in6));
-            enum socks_state state = start_connection(parser, connection, key);
+            state = start_connection(parser, connection, key);
             return state;
         case FQDN:
             // Resolución de nombres --> Bloqueante! Usar threads
@@ -298,20 +281,19 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
     }
 }
 
-static void 
-req_read_init(struct selector_key * key){
+static void req_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *) key->data;
-    req_parser_init(&connection->parsers->req_parser);
+    req_parser_init(connection->parsers->req_parser);
 }
 
 static enum socks_state 
 req_read(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = &connection->parsers->req_parser;
+    struct req_parser * parser = connection->parsers->req_parser;
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, NULL); //TODO: Flags?
+    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
     if(n_received <= 0) return ERROR;
     buffer_write_adv(&connection->buffers->read_buff, n_received);
 
@@ -347,7 +329,7 @@ req_resolve(struct selector_key * key){
     // Post thread completition state, we need to start the connection to the address
     // resolved in start_connection();
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = &connection->parsers->req_parser;
+    struct req_parser * parser = connection->parsers->req_parser;
     if(connection->curr_addr != NULL){
 
         memcpy(&connection->src_conn->addr, connection->curr_addr->ai_addr,
@@ -370,12 +352,6 @@ req_resolve(struct selector_key * key){
     return ERROR;
 }
 
-static enum socks_state
-req_write(struct selector_key * key){
-
-    return ERROR;
-}
-
 static int 
 create_response(struct req_parser * parser, buffer * write_buff){
     /*
@@ -388,10 +364,10 @@ create_response(struct req_parser * parser, buffer * write_buff){
  * (https://www.rfc-editor.org/rfc/rfc1928)
     */ 
     size_t byte_n;
-    uint8_t * buff_ptr = buffer_write_ptr(write_buff, byte_n);
+    uint8_t * buff_ptr = buffer_write_ptr(write_buff, &byte_n);
     int addr_len = -1;
     enum req_atyp type = parser->res_parser.type;
-    uint8_t addr_ptr = NULL;
+    uint8_t * addr_ptr = NULL;
     if(type == IPv4){
         addr_len = IPv4_BYTES;
         addr_ptr = (uint8_t *) &(parser->res_parser.addr.ipv4.sin_addr);
@@ -427,10 +403,9 @@ create_response(struct req_parser * parser, buffer * write_buff){
     return -1;
 }
 
-static enum socks_state
-req_connect(struct selector_key * key){
+static enum socks_state req_connect(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = &connection->parsers->req_parser;
+    struct req_parser * parser = connection->parsers->req_parser;
     unsigned int error = 0;
     int getsockopt_retval = -1;
     getsockopt_retval = getsockopt(connection->src_conn->socket,
@@ -483,15 +458,13 @@ req_connect(struct selector_key * key){
     return ERROR;
 }
 
-static enum socks_state
-req_write(struct selector_key * key){
+static enum socks_state req_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = &connection->parsers->req_parser;
+    struct req_parser * parser = connection->parsers->req_parser;
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &byte_n);
-    ssize_t bytes_sent = send(connection->cli_conn->socket, buff_ptr,
-                            byte_n, NULL); //TODO: Flags?
+    ssize_t bytes_sent = send(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
     if(bytes_sent == -1){
         fprintf(stdout, "Sending bytes in req_write failed");
         return ERROR;
@@ -524,8 +497,7 @@ set_copy_struct_config(int fd, struct copy_model_t * copy,
     copy->other = other_copy;
 }
 
-static void
-copy_init(struct selector_key * key){
+static void copy_init(const unsigned state, struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * cli_copy = &connection->cli_copy;
     struct copy_model_t * src_copy = &connection->src_copy;
@@ -542,8 +514,7 @@ copy_init(struct selector_key * key){
     //TODO: No se que mas hay que configurar del copy pero dejo el TODO como marca
 }
 
-static enum socks_state
-copy_read(struct selector_key * key){
+static enum socks_state copy_read(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
         &connection->cli_copy: key->fd == connection->src_conn->socket?
@@ -553,7 +524,7 @@ copy_read(struct selector_key * key){
     if(buffer_can_write(&copy->buffers->write_buff)){
         size_t byte_n;
         uint8_t * buff_ptr = buffer_write_ptr(&copy->buffers->write_buff, &byte_n);
-        ssize_t bytes_rcvd = recv(key->fd, buff_ptr, byte_n, NULL); //TODO: Flags?
+        ssize_t bytes_rcvd = recv(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
         if(bytes_rcvd > 0){
             buffer_write_adv(&copy->buffers->write_buff, bytes_rcvd);
             copy->other->interests = copy->other->interests | OP_WRITE;
@@ -603,8 +574,7 @@ copy_read(struct selector_key * key){
     return COPY;
 }
 
-static enum socks_state 
-copy_write(struct selector_key * key){
+static enum socks_state copy_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
         &connection->cli_copy: key->fd == connection->src_conn->socket?
@@ -613,7 +583,7 @@ copy_write(struct selector_key * key){
 
     size_t byte_n;
     uint8_t * buff_ptr = buffer_read_ptr(&copy->buffers->read_buff, &byte_n);
-    ssize_t bytes_sent = send(key->fd, buff_ptr, byte_n, NULL); //TODO: Flags?
+    ssize_t bytes_sent = send(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
 
     if(bytes_sent > 0){
         buffer_read_adv(&copy->buffers->read_buff, bytes_sent);
@@ -637,7 +607,7 @@ copy_write(struct selector_key * key){
 
 
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
-static const struct state_definition states[] = {
+static struct state_definition states[] = {
     {
         .state = HELLO_READ,
     },
