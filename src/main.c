@@ -36,29 +36,29 @@
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
 
-struct fdStruct {
+/* struct fdStruct {
     int fd;
-};
+}; */
 
 
 void socksv5_passive_accept(struct selector_key * key);
-void serverRead(struct selector_key *key);
+/* void serverRead(struct selector_key *key);
 void serverWrite(struct selector_key *key);
 void clientRead(struct selector_key *key);
 void clientWrite(struct selector_key *key);
 void newFdClose(struct selector_key *key);
-void newFdBlock(struct selector_key *key);
+void newFdBlock(struct selector_key *key); */
 
 static bool done = false;
-static buffer clientBuffer;
+/* static buffer clientBuffer;
 static buffer serverBuffer;
 static uint8_t clientBufferData[1024];
-static uint8_t serverBufferData[1024];
+static uint8_t serverBufferData[1024]; */
 
-int clientFd = -1;
+/* int clientFd = -1;
 int serverFd = -1;
 int clientInterest = OP_NOOP;
-int serverInterest = OP_NOOP;
+int serverInterest = OP_NOOP; */
 
 static void
 sigterm_handler(const int signal) {
@@ -68,7 +68,7 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, char **argv) {
-    unsigned port = 1080;
+    //unsigned port = 1080;
     /* char * destPort = "9090";
     char * destIp = "localhost"; */
 
@@ -230,7 +230,7 @@ main(const int argc, char **argv) {
 }
 
 
-void clientRead(struct selector_key *key){
+/* void clientRead(struct selector_key *key){
     printf("clientRead\n");
     struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
@@ -255,9 +255,9 @@ void clientRead(struct selector_key *key){
     serverInterest |= OP_WRITE;
     selector_set_interest(key->s, serverFd, serverInterest);
     printf("LEIDO\n");
-}
+} */
 
-void clientWrite(struct selector_key *key){
+/* void clientWrite(struct selector_key *key){
     printf("clientWrite\n");
     struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
@@ -281,9 +281,9 @@ void clientWrite(struct selector_key *key){
         clientInterest &= ~OP_WRITE;
         selector_set_interest(key->s, clientFd, clientInterest);
     }
-}
+} */
 
-void serverRead(struct selector_key *key){
+/* void serverRead(struct selector_key *key){
     printf("serverRead\n");
     struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
@@ -308,9 +308,9 @@ void serverRead(struct selector_key *key){
     clientInterest |= OP_WRITE;
     selector_set_interest(key->s, clientFd, clientInterest);
     printf("LEIDO\n");
-}
+} */
 
-void serverWrite(struct selector_key *key){
+/* void serverWrite(struct selector_key *key){
     printf("serverWrite\n");
     struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
@@ -334,16 +334,16 @@ void serverWrite(struct selector_key *key){
         selector_set_interest(key->s, serverFd, serverInterest);
     }
     
-}
+} */
 
-void newFdClose(struct selector_key *key){
+/* void newFdClose(struct selector_key *key){
     selector_unregister_fd(key->s, ((struct fdStruct *)key)->fd);
     printf("Cerrando\n");
-}
+} */
 
-void newFdBlock(struct selector_key *key){
+/* void newFdBlock(struct selector_key *key){
     printf("Bloqueando\n");
-}
+} */
 
 /* void socksv5_passive_accept(struct selector_key * key) {
     int master_fd = key->fd;
