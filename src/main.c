@@ -33,7 +33,7 @@
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
 
-struct banana {
+struct fdStruct {
     int fd;
 };
 
@@ -43,6 +43,8 @@ void serverRead(struct selector_key *key);
 void serverWrite(struct selector_key *key);
 void clientRead(struct selector_key *key);
 void clientWrite(struct selector_key *key);
+void newFdClose(struct selector_key *key);
+void newFdBlock(struct selector_key *key);
 
 static bool done = false;
 static buffer clientBuffer;
@@ -52,6 +54,8 @@ static uint8_t serverBufferData[1024];
 
 int clientFd = -1;
 int serverFd = -1;
+int clientInterest = OP_NOOP;
+int serverInterest = OP_NOOP;
 
 static void
 sigterm_handler(const int signal) {
@@ -143,7 +147,7 @@ main(const int argc, const char **argv) {
     const struct selector_init conf = {
         .signal = SIGALRM,
         .select_timeout = {
-            .tv_sec  = 10,
+            .tv_sec  = 100,
             .tv_nsec = 0,
         },
     };
@@ -201,12 +205,13 @@ main(const int argc, const char **argv) {
 	}
     selector_fd_set_nio(serverFd);
 
-    struct banana * unaBanana = malloc(sizeof(struct banana));
-    unaBanana->fd = serverFd;
-    fd_handler serverFdHandler = {&serverRead, &serverWrite, NULL, NULL};
-    selector_register(selector, serverFd, &serverFdHandler, OP_READ, unaBanana);
+    struct fdStruct * fdStruct = malloc(sizeof(struct fdStruct));
+    fdStruct->fd = serverFd;
+    fd_handler serverFdHandler = {&serverRead, &serverWrite, &newFdBlock, &newFdClose};
+    serverInterest = OP_READ;
+    selector_register(selector, serverFd, &serverFdHandler, serverInterest, fdStruct);
 
-    send(serverFd, "booenas\n", strlen("booenas\n"), 0);
+    send(serverFd, "Buenas\n", strlen("Buenas\n"), 0);
     printf("\nLISTO\n\n");
 
     // ==============================================================================================
@@ -251,7 +256,7 @@ finally:
 
 void clientRead(struct selector_key *key){
     printf("clientRead\n");
-    struct banana * unaBanana = (struct banana *) key->data;
+    struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
     if(!buffer_can_write(&clientBuffer))
         return;
@@ -259,7 +264,7 @@ void clientRead(struct selector_key *key){
     size_t nByte = 0;
 
     uint8_t * buf = buffer_write_ptr(&clientBuffer, &nByte);
-    int bytes = recv(unaBanana->fd, buf, nByte, 0);
+    int bytes = recv(clientFd, buf, nByte, 0);
 
     if(bytes < 0){
         printf("Error en recv\n");
@@ -271,20 +276,22 @@ void clientRead(struct selector_key *key){
     }
         
     buffer_write_adv(&clientBuffer, bytes);
-    selector_set_interest(key->s, serverFd, OP_WRITE);
-    printf("LEIDO PAAAAAA\n");
+    serverInterest |= OP_WRITE;
+    selector_set_interest(key->s, serverFd, serverInterest);
+    printf("LEIDO\n");
 }
 
 void clientWrite(struct selector_key *key){
     printf("clientWrite\n");
-    struct banana * unaBanana = (struct banana *) key->data;
+    struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
     if(!buffer_can_read(&serverBuffer))
         return;
+
     size_t nByte = 0;
     uint8_t * buf = buffer_read_ptr(&serverBuffer, &nByte);
 
-    int sent = send(unaBanana->fd, buf, nByte, 0);
+    int sent = send(clientFd, buf, nByte, 0);
     if(sent < 0){
         printf("Error en send\n");
         return;
@@ -294,13 +301,15 @@ void clientWrite(struct selector_key *key){
         return;    
     }
     buffer_read_adv(&serverBuffer, sent);
-    if(!buffer_can_read(&serverBuffer))
-        selector_set_interest(key->s, clientFd, OP_READ);
+    if(!buffer_can_read(&serverBuffer)){
+        clientInterest &= ~OP_WRITE;
+        selector_set_interest(key->s, clientFd, clientInterest);
+    }
 }
 
 void serverRead(struct selector_key *key){
     printf("serverRead\n");
-    struct banana * unaBanana = (struct banana *) key->data;
+    struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
     if(!buffer_can_write(&serverBuffer))
         return;
@@ -308,7 +317,7 @@ void serverRead(struct selector_key *key){
     size_t nByte = 0;
 
     uint8_t * buf = buffer_write_ptr(&serverBuffer, &nByte);
-    int bytes = recv(unaBanana->fd, buf, nByte, 0);
+    int bytes = recv(serverFd, buf, nByte, 0);
 
     if(bytes < 0){
         printf("Error en recv\n");
@@ -320,20 +329,21 @@ void serverRead(struct selector_key *key){
     }
         
     buffer_write_adv(&serverBuffer, bytes);
-    selector_set_interest(key->s, clientFd, OP_WRITE);
-    printf("LEIDO PAAAAAA\n");
+    clientInterest |= OP_WRITE;
+    selector_set_interest(key->s, clientFd, clientInterest);
+    printf("LEIDO\n");
 }
 
 void serverWrite(struct selector_key *key){
     printf("serverWrite\n");
-    struct banana * unaBanana = (struct banana *) key->data;
+    struct fdStruct * fdStruct = (struct fdStruct *) key->data;
 
     if(!buffer_can_read(&clientBuffer))
         return;
 
     size_t nByte = 0;
     uint8_t * buf = buffer_read_ptr(&clientBuffer, &nByte);
-    int sent = send(unaBanana->fd, buf, nByte, 0);
+    int sent = send(serverFd, buf, nByte, 0);
     if(sent < 0){
         printf("Error en send\n");
         return;
@@ -343,18 +353,20 @@ void serverWrite(struct selector_key *key){
         return;    
     }
     buffer_read_adv(&clientBuffer, sent);
-    if(!buffer_can_read(&clientBuffer))
-        selector_set_interest(key->s, serverFd, OP_READ);
+    if(!buffer_can_read(&clientBuffer)){
+        serverInterest &= ~OP_WRITE;
+        selector_set_interest(key->s, serverFd, serverInterest);
+    }
     
 }
 
 void newFdClose(struct selector_key *key){
-    selector_unregister_fd(key->s, ((struct banana *)key)->fd);
-    printf("Cerrando Pa\n");
+    selector_unregister_fd(key->s, ((struct fdStruct *)key)->fd);
+    printf("Cerrando\n");
 }
 
 void newFdBlock(struct selector_key *key){
-    printf("Bloqueando Pa\n");
+    printf("Bloqueando\n");
 }
 
 void socksv5_passive_accept(struct selector_key * key) {
@@ -371,12 +383,12 @@ void socksv5_passive_accept(struct selector_key * key) {
         printf("ERROR EN send \n");
     }
 
-    struct banana * unaBanana = malloc(sizeof(struct banana));
-    unaBanana->fd = clientFd;
+    struct fdStruct * fdStruct = malloc(sizeof(struct fdStruct));
+    fdStruct->fd = clientFd;
     fd_handler clientFdHandler = {&clientRead, &clientWrite, &newFdBlock, &newFdClose};
 
-
-    if(selector_register(key->s, clientFd, &clientFdHandler, OP_READ, unaBanana) != 0){
+    clientInterest = OP_READ; 
+    if(selector_register(key->s, clientFd, &clientFdHandler, clientInterest, fdStruct) != 0){
         printf("Error en el register \n");
     }
 

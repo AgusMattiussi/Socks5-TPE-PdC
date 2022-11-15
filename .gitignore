@@ -75,5 +75,6 @@ dkms.conf
 .DS_Store
 Thumbs.db
 bin/
+.gdb*
 
 # End of https://www.toptal.com/developers/gitignore/api/c
