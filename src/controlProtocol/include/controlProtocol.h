@@ -14,7 +14,8 @@
 #define HELLO_LEN 10
 
 typedef enum controlProtStmState {
-    CP_HELLO,
+    CP_HELLO_START,
+    CP_HELLO_WRITE,
     CP_AUTH,
     CP_EXECUTE,
     CP_OK,
