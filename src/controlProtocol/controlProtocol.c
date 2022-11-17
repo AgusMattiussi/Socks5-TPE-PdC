@@ -38,6 +38,13 @@ controlProtConn * newControlProtConn(int fd){
     
     if(new != NULL){
         initStm(&new->connStm);
+
+        new->readBuffer = malloc(sizeof(buffer));
+        new->writeBuffer = malloc(sizeof(buffer));
+        if(new->readBuffer == NULL || new->writeBuffer == NULL){
+            //TODO: Manejar Error
+        }
+
         buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
@@ -47,6 +54,15 @@ controlProtConn * newControlProtConn(int fd){
     return new;
 }
 
+void freeControlProtConn(controlProtConn * cpc){
+    if(cpc == NULL)
+        return;
+
+    free(cpc->readBuffer);
+    free(cpc->writeBuffer);
+    free(cpc);
+}
+
 //TODO: Deberia usar el buffer?
 static controlProtStmState helloHandler(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
@@ -54,8 +70,8 @@ static controlProtStmState helloHandler(struct selector_key * key){
     int verLen = strlen(CONTROL_PROT_VERSION);
 
     char helloMsg[HELLO_LEN] = {'\0'};
-    helloMsg[0] = STATUS_SUCCESS; // Status: Success
-    helloMsg[1] = 1; // HAS_DATA: 1 linea
+    helloMsg[0] = STATUS_SUCCESS;       // Status: Success
+    helloMsg[1] = 1;                    // HAS_DATA: 1 linea
     memcpy(&helloMsg[2], CONTROL_PROT_VERSION, verLen);
     helloMsg[verLen + 3] = '\n';
     int totalLen = verLen + 4;
