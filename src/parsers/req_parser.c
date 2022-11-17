@@ -34,6 +34,7 @@ void
 req_parse_byte(struct req_parser * parser, uint8_t to_parse){
     switch(parser->state){
         case REQ_VER:
+            printf("[REQ_VER] byte to parse %d\n", to_parse);
             if(to_parse == SOCKS_VERSION) parser->state = REQ_CMD;
             else{
                 fprintf(stdout, "Request has unsupported version.");
@@ -41,6 +42,8 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             break;
         case REQ_CMD:
+        printf("[REQ_CMD] byte to parse %d\n", to_parse);
+
             if(to_parse == REQ_CMD_CONNECT || to_parse == REQ_CMD_BIND ||
             to_parse == REQ_CMD_UDP){
                 parser->cmd = to_parse;
@@ -49,10 +52,14 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             else{parser->state=REQ_ERROR;}
             break;
         case REQ_RSV:
+        printf("[REQ_RSV] byte to parse %d\n", to_parse);
+
             if(to_parse == 0x00) parser->state = REQ_ATYP;
             else{parser->state = REQ_ERROR;}
             break;
         case REQ_ATYP:
+        printf("[REQ_ATYP] byte to parse %d\n", to_parse);
+
             //We need to initialize according to the addrtype
             parser->type = to_parse;
 
@@ -86,6 +93,8 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             break;
         case REQ_DST_ADDR:
+        printf("[REQ_DST_ADDR] byte to parse %d\n", to_parse);
+
             if(parser->type == FQDN && parser->to_parse == -2){
                 // Tengo que leer los octetos exactos, el primero me dice cuantos tiene
                 // Si no tengo nada, paso directo a REQ_DST_PORT
@@ -108,6 +117,8 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             break;
         case REQ_DST_PORT:
+        printf("[REQ_DST_PORT] byte to parse %d\n", to_parse);
+
             *parser->where_to = to_parse;
             if(--parser->to_parse == 0) parser->state = REQ_DONE;
             break;
@@ -119,12 +130,13 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
 }
 
 enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
+    printf("Entro a req_parse_full\n");
     while(buffer_can_read(buff)){
         uint8_t to_parse = buffer_read(buff);
         req_parse_byte(parser, to_parse);
         if(parser->state == REQ_ERROR){
             fprintf(stdout, "Error parsing request, returning.");
-            return REQ_ERROR;;
+            return REQ_ERROR;
         }
     }
 }

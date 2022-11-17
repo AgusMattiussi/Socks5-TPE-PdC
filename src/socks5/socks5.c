@@ -99,6 +99,7 @@ conn_write(struct selector_key * key){
 
  void auth_read_init(const unsigned state, struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
+    printf("Llego a auth_read_init\n");
     auth_parser_init(connection->parsers->auth_parser);
  }
 
@@ -292,12 +293,14 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
 }
 
 static void req_read_init(const unsigned state, struct selector_key * key){
+    printf("Entro a req_read_init\n");
     struct socks_conn_model * connection = (socks_conn_model *) key->data;
     req_parser_init(connection->parsers->req_parser);
 }
 
 static enum socks_state 
 req_read(struct selector_key * key){
+    printf("Entro a req_read\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct req_parser * parser = connection->parsers->req_parser;
 
