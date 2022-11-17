@@ -516,25 +516,19 @@ static void
 set_copy_struct_config(int fd, struct copy_model_t * copy, 
                         buffer wr_buff, buffer rd_buff, struct copy_model_t * other_copy){
     copy->fd = fd;
-    copy->buffers->write_buff = wr_buff;
-    copy->buffers->read_buff = rd_buff;
+    copy->write_buff = &wr_buff;
+    copy->read_buff = &rd_buff;
     copy->interests = OP_READ;
     copy->connection_interests = OP_READ | OP_WRITE;
-    copy->other = other_copy;
+    copy->other = &other_copy;
 }
 
 static void copy_init(const unsigned state, struct selector_key * key){
     printf("Entro a copy init\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
 
-    connection->cli_copy = malloc(sizeof(struct copy_model_t));
-    connection->src_copy = malloc(sizeof(struct copy_model_t));
-
-
     struct copy_model_t * cli_copy = &connection->cli_copy;
     struct copy_model_t * src_copy = &connection->src_copy;
-
-
 
     //TODO: Chequear si hice esto bien, no me acuerdo.
     set_copy_struct_config(connection->cli_conn->socket, cli_copy, 
@@ -556,12 +550,12 @@ static enum socks_state copy_read(struct selector_key * key){
         &connection->src_copy: NULL;
     if(copy == NULL) return ERROR;
 
-    if(buffer_can_write(&copy->buffers->write_buff)){
+    if(buffer_can_write(copy->write_buff)){
         size_t byte_n;
-        uint8_t * buff_ptr = buffer_write_ptr(&copy->buffers->write_buff, &byte_n);
+        uint8_t * buff_ptr = buffer_write_ptr(copy->write_buff, &byte_n);
         ssize_t bytes_rcvd = recv(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
         if(bytes_rcvd > 0){
-            buffer_write_adv(&copy->buffers->write_buff, bytes_rcvd);
+            buffer_write_adv(copy->write_buff, bytes_rcvd);
             copy->other->interests = copy->other->interests | OP_WRITE;
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
             selector_status selector_ret = 
@@ -584,7 +578,7 @@ static enum socks_state copy_read(struct selector_key * key){
             //return ERROR; //TODO: Should we return fail upon socket closure error?
         }
         //No more read for copy->fd socket
-        if(!buffer_can_read(&(copy->buffers->write_buff))){
+        if(!buffer_can_read(copy->write_buff)){
             copy->other->interests = copy->other->interests & 
                     copy->other->connection_interests;
             selector_status selector_ret = 
@@ -619,15 +613,15 @@ static enum socks_state copy_write(struct selector_key * key){
     if(copy == NULL) return ERROR;
 
     size_t byte_n;
-    uint8_t * buff_ptr = buffer_read_ptr(&copy->buffers->read_buff, &byte_n);
+    uint8_t * buff_ptr = buffer_read_ptr(copy->read_buff, &byte_n);
     ssize_t bytes_sent = send(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
 
     if(bytes_sent > 0){
-        buffer_read_adv(&copy->buffers->read_buff, bytes_sent);
+        buffer_read_adv(copy->read_buff, bytes_sent);
         copy->other->interests = copy->other->interests | OP_READ;
         copy->other->interests = copy->other->interests & copy->other->connection_interests;
         selector_status selector_ret = selector_set_interest(key->s, copy->other->fd, copy->other->interests);
-        if(!buffer_can_read(&copy->buffers->read_buff)){
+        if(!buffer_can_read(copy->read_buff)){
             uint8_t complement_mask = ~OP_WRITE;
             copy->interests = copy->interests & complement_mask;
             copy->interests = copy->interests & copy->other->interests;

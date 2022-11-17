@@ -32,23 +32,23 @@ void set_len_to_parse(struct auth_parser * parser, uint8_t to_parse){
 void auth_parse_byte(struct auth_parser * parser, uint8_t to_parse){
     switch(parser->state){
         case AUTH_VER:
-            printf("[AUTH_VER] parseo byte %d", to_parse); 
+            printf("[AUTH_VER] parseo byte %d\n", to_parse); 
             if(to_parse == AUTH_VERSION){parser->state = AUTH_ULEN;}
             else{parser->state = AUTH_ERROR;}
             break;
         case AUTH_ULEN:
         case AUTH_PLEN:
-            printf("[AUTH_(U|P)LEN] parseo byte %d", to_parse);         
+            printf("[AUTH_(U|P)LEN] parseo byte %d\n", to_parse);         
             set_len_to_parse(parser, to_parse);
             break;
         case AUTH_UNAME:
         case AUTH_PASSWD:
-            printf("[AUTH_UNAME/PASSWD] parseo byte %d", to_parse);         
+            printf("[AUTH_UNAME/PASSWD] parseo byte %c\n", to_parse);         
             plain_parse_byte(parser, to_parse);
             break;
         case AUTH_DONE:
         case AUTH_ERROR:
-            printf("[AUTH_DONE/ERROR] parseo byte %d", to_parse);         
+            printf("[AUTH_DONE/ERROR] parseo byte %d\n", to_parse);         
             break;
         default:
             fprintf(stdout, "Should never reach this state.");
