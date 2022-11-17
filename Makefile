@@ -2,7 +2,7 @@ CC=gcc
 CCFLAGS_FINAL=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -pedantic -pedantic-errors -O3 -std=c11 -D_POSIX_C_SOURCE=200112L
 CCFLAGS=-Wall -g -pthread
 AS= -fsanitize=address
-SOURCES=$(wildcard src/*.c) $(wildcard src/parsers/*.c) $(wildcard src/socks5/*.c) $(wildcard src/users/*.c)
+SOURCES=$(wildcard src/*.c) $(wildcard src/parsers/*.c) $(wildcard src/socks5/*.c) $(wildcard src/users/*.c) $(wildcard src/mng/*.c)
 BIN_DIR=./bin
 BIN_FILE=./bin/main
 
