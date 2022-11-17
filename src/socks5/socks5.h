@@ -85,8 +85,8 @@ typedef struct socks_conn_model{
     struct state_machine stm;
     // POP3?
 
-    struct copy_model_t cli_copy;
-    struct copy_model_t src_copy;
+    struct copy_model_t * cli_copy;
+    struct copy_model_t * src_copy;
 
 } socks_conn_model;
 

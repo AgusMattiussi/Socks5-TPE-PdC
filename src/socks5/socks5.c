@@ -248,11 +248,13 @@ start_connection(struct req_parser * parser, socks_conn_model * connection,
     if(ret_conn == 0 || (ret_conn == -1 && errno == EINPROGRESS)){
         // Connection succesful
         selector_status ret_selector = selector_set_interest(key->s,
-        connection->cli_conn->socket, OP_NOOP);
+        connection->cli_conn->socket, OP_WRITE);
         if(ret_selector == SELECTOR_SUCCESS){
             ret_selector = -1;
             ret_selector = selector_register(key->s, connection->src_conn->socket,
-                                            get_conn_actions_handler(), OP_WRITE, connection);
+                                            get_conn_actions_handler(), OP_READ | OP_WRITE, 
+                                            connection);
+            if(ret_selector == SELECTOR_SUCCESS) printf("REQ_CONNECT\n");
             return ret_selector == SELECTOR_SUCCESS?REQ_CONNECT:ERROR;
         }
         return ERROR; //TODO: Handle errors
@@ -268,7 +270,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
     enum socks_state state;
     switch(type){
         case IPv4:
-        printf("IPv4\n");
+            printf("IPv4\n");
             connection->src_addr_family = AF_INET;
             parser->addr.ipv4.sin_port = parser->port;
             connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
@@ -464,6 +466,7 @@ req_connect(struct selector_key * key){
                     int bytes_written = 
                                 create_response(parser, &connection->buffers->write_buff);
                     if(bytes_written > -1){
+                        printf("Paso a req_write\n");
                         return REQ_WRITE;
                     }
                 }
@@ -478,7 +481,9 @@ req_connect(struct selector_key * key){
     return ERROR;
 }
 
-static enum socks_state req_write(struct selector_key * key){
+static enum socks_state 
+req_write(struct selector_key * key){
+    printf("Entro a req write\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct req_parser * parser = connection->parsers->req_parser;
 
@@ -497,6 +502,7 @@ static enum socks_state req_write(struct selector_key * key){
     if(selector_ret==SELECTOR_SUCCESS){
         selector_ret = selector_set_interest(key->s, connection->src_conn->socket,
                                             OP_READ);
+        if(selector_ret == SELECTOR_SUCCESS) printf("Paso a copy\n");
         return selector_ret==SELECTOR_SUCCESS?COPY:ERROR;
     }
     return ERROR;
@@ -518,9 +524,17 @@ set_copy_struct_config(int fd, struct copy_model_t * copy,
 }
 
 static void copy_init(const unsigned state, struct selector_key * key){
+    printf("Entro a copy init\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
+
+    connection->cli_copy = malloc(sizeof(struct copy_model_t));
+    connection->src_copy = malloc(sizeof(struct copy_model_t));
+
+
     struct copy_model_t * cli_copy = &connection->cli_copy;
     struct copy_model_t * src_copy = &connection->src_copy;
+
+
 
     //TODO: Chequear si hice esto bien, no me acuerdo.
     set_copy_struct_config(connection->cli_conn->socket, cli_copy, 
@@ -535,6 +549,7 @@ static void copy_init(const unsigned state, struct selector_key * key){
 }
 
 static enum socks_state copy_read(struct selector_key * key){
+    printf("Entro a copy read\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
         &connection->cli_copy: key->fd == connection->src_conn->socket?
@@ -596,6 +611,7 @@ static enum socks_state copy_read(struct selector_key * key){
 }
 
 static enum socks_state copy_write(struct selector_key * key){
+    printf("Entro a copy write\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * copy = key->fd == connection->cli_conn->socket?
         &connection->cli_copy: key->fd == connection->src_conn->socket?
@@ -626,7 +642,8 @@ static enum socks_state copy_write(struct selector_key * key){
     return ERROR; //TODO: error management?
 }
 
-
+static void
+req_connect_init(){printf("Estoy en estado REQ CONNECT\n");}
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
 static const struct state_definition states[] = {
     /*{
@@ -668,6 +685,7 @@ static const struct state_definition states[] = {
     },
     {
         .state = REQ_CONNECT,
+        .on_arrival = req_connect_init,
         .on_write_ready = req_connect,
     },
     {
