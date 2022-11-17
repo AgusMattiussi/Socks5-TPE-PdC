@@ -1,10 +1,15 @@
 #include "socks5.h"
 
+#define BUFFER_DEFAULT_SIZE 4096
+uint32_t buf_size = BUFFER_DEFAULT_SIZE;
+uint32_t socks_get_buf_size() { return buf_size; }
+
 /*----------------------
  |  Connection functions
  -----------------------*/
 
 void conn_read_init(const unsigned state, struct selector_key * key){
+    printf("Llego a conn_read_init\n");
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     // TODO: Where to parse input? 
     // Update: We initialize parser when read is set
@@ -50,6 +55,7 @@ static enum socks_state conn_read(struct selector_key * key){
 
 static enum socks_state 
 conn_write(struct selector_key * key){
+    printf("Entro a connection write\n");
     socks_conn_model * connection = (socks_conn_model *) key->data;
     // We need to build the write the server response to buffer
     size_t n_available;
@@ -59,6 +65,7 @@ conn_write(struct selector_key * key){
         fprintf(stdout, "Error sending bytes to client socket.");
         return ERROR;
     }
+    printf("Mande %d bytes hacia cli\n", n_sent);
     buffer_read_adv(&connection->buffers->write_buff, n_sent);
     // We need to check whether there is something else to send. If so, we keep writing
     if(buffer_can_read(&connection->buffers->write_buff)){
@@ -71,8 +78,10 @@ conn_write(struct selector_key * key){
 
     switch(connection->parsers->connect_parser->auth){
         case NO_AUTH:
+            printf("STM pasa a estado REQ_READ\n");
             return REQ_READ;
         case USER_PASS:
+            printf("STM pasa a estado AUTH_READ\n");
             return AUTH_READ;
         case GSSAPI:
             fprintf(stdout, "GSSAPI is out of this project's scope.");
@@ -111,8 +120,8 @@ conn_write(struct selector_key * key){
     }
     if(ret_state == AUTH_DONE){ 
         //TODO: Build process_authentication_request (declared, not built yet)
-        uint8_t is_authenticated = process_authentication_request(parser->username, 
-                                                                  parser->password);
+        uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
+                                                                  (char*)parser->password);
 
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;
@@ -213,8 +222,8 @@ set_name_resolving_thread(struct selector_key * key){
         return ERROR; //TODO: Check error return
     }
     memcpy(aux_key, key, sizeof(*key));
-    pthread_t * thread_id;
-    int ret_thread_create = pthread_create(thread_id, NULL, &name_resolving_thread, aux_key);
+    pthread_t thread_id;
+    int ret_thread_create = pthread_create(&thread_id, NULL, &name_resolving_thread, aux_key);
     if(ret_thread_create == 0){
         int ret_set_selector = selector_set_interest_key(key, OP_NOOP);
         return ret_set_selector == SELECTOR_SUCCESS?REQ_RESOLVE:ERROR;
@@ -571,7 +580,8 @@ static enum socks_state copy_read(struct selector_key * key){
     uint8_t complement_mask = ~OP_READ; //OP_WRITE
     copy->interests = copy->interests & complement_mask; //TODO: Que pongo acá
     copy->interests = copy->interests & copy->connection_interests;
-    selector_status selector_ret = selector_set_interest(key->s, key->fd, copy->interests);
+    //selector_status selector_ret = selector_set_interest(key->s, key->fd, copy->interests);
+    selector_set_interest(key->s, key->fd, copy->interests);
     return COPY;
 }
 
@@ -608,13 +618,13 @@ static enum socks_state copy_write(struct selector_key * key){
 
 
 //TODO: IMPORTANT! Define functions (where needed) for arrival, read, and write in states.
-static struct state_definition states[] = {
-    {
+static const struct state_definition states[] = {
+    /*{
         .state = HELLO_READ,
     },
     {
         .state = HELLO_WRITE,
-    },
+    },*/
     {
         .state = CONN_READ,
         .on_arrival = conn_read_init,
@@ -639,16 +649,16 @@ static struct state_definition states[] = {
         .on_read_ready = req_read,
     },
     {
+        .state = REQ_WRITE,
+        .on_write_ready = req_write,
+    },
+    {
         .state = REQ_RESOLVE,
         .on_block_ready = req_resolve,
     },
     {
         .state = REQ_CONNECT,
         .on_write_ready = req_connect,
-    },
-    {
-        .state = REQ_WRITE,
-        .on_write_ready = req_write,
     },
     {
         .state = COPY,

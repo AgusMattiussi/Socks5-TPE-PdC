@@ -26,8 +26,8 @@
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
 enum socks_state{
-    HELLO_READ,
-    HELLO_WRITE,
+    //HELLO_READ,
+    //HELLO_WRITE,
     CONN_READ,
     CONN_WRITE,
     AUTH_READ,
@@ -37,8 +37,8 @@ enum socks_state{
     REQ_RESOLVE,
     REQ_CONNECT,
     COPY,
-    DONE,
     ERROR,
+    DONE
 };
 
 struct std_conn_model{
@@ -83,7 +83,6 @@ typedef struct socks_conn_model{
     struct addrinfo * curr_addr;
 
     struct state_machine stm;
-
     // POP3?
 
     struct copy_model_t cli_copy;
@@ -92,6 +91,7 @@ typedef struct socks_conn_model{
 } socks_conn_model;
 
 struct state_definition * socks5_all_states();
+uint32_t socks_get_buf_size();
 
 void close_socks5_connection(socks_conn_model * connection);
 
