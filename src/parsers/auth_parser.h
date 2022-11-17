@@ -72,5 +72,6 @@ struct auth_parser{
 
 void auth_parser_init(struct auth_parser * parser);
 enum auth_state auth_parse_full(struct auth_parser * parser, buffer * buff);
+enum auth_state mng_auth_parse_full(struct auth_parser * parser, buffer * buff);
 
 #endif
