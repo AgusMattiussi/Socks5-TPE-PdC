@@ -1,0 +1,5 @@
+#ifndef CONTROL_PROTOCOL_H
+#define CONTROL_PROTOCOL_H
+
+
+#endif
