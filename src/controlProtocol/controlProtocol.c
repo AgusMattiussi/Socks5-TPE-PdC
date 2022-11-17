@@ -1,10 +1,12 @@
 #include "include/controlProtocol.h"
 
-
+static void initStm(struct state_machine * stm);
+static controlProtStmState helloHandler(struct selector_key * key);
 
 static const struct state_definition controlProtStateDef[] = {
     {
         .state = CP_HELLO,
+        .on_write_ready = helloHandler
     },
     {
         .state = CP_AUTH,
@@ -31,7 +33,7 @@ static void initStm(struct state_machine * stm){
 
 
 //TODO: static? Args?
-controlProtConn * newControlProtConn(){
+controlProtConn * newControlProtConn(int fd){
     controlProtConn * new = calloc(1, sizeof(controlProtConn));
     
     if(new != NULL){
@@ -39,27 +41,38 @@ controlProtConn * newControlProtConn(){
         buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
+        new->fd = fd;
         new->currentState = CP_HELLO;
     }
     return new;
 }
 
+//TODO: Deberia usar el buffer?
+static controlProtStmState helloHandler(struct selector_key * key){
+    controlProtConn * cpc = (controlProtConn *) key->data;
 
-// struct state_definition {
-//     /**
-//      * identificador del estado: típicamente viene de un enum que arranca
-//      * desde 0 y no es esparso.
-//      */
-//     unsigned state;
+    int verLen = strlen(CONTROL_PROT_VERSION);
 
-//     /** ejecutado al arribar al estado */
-//     void     (*on_arrival)    (const unsigned state, struct selector_key *key);
-//     /** ejecutado al salir del estado */
-//     void     (*on_departure)  (const unsigned state, struct selector_key *key);
-//     /** ejecutado cuando hay datos disponibles para ser leidos */
-//     unsigned (*on_read_ready) (struct selector_key *key);
-//     /** ejecutado cuando hay datos disponibles para ser escritos */
-//     unsigned (*on_write_ready)(struct selector_key *key);
-//     /** ejecutado cuando hay una resolución de nombres lista */
-//     unsigned (*on_block_ready)(struct selector_key *key);
-// };
+    char helloMsg[HELLO_LEN] = {'\0'};
+    helloMsg[0] = STATUS_SUCCESS; // Status: Success
+    helloMsg[1] = 1; // HAS_DATA: 1 linea
+    memcpy(&helloMsg[2], CONTROL_PROT_VERSION, verLen);
+    helloMsg[verLen + 3] = '\n';
+    int totalLen = verLen + 4;
+
+    size_t maxWrite;
+    uint8_t * bufPtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
+
+    if(totalLen > maxWrite){
+        //TODO: Manejar error
+        //return CP_ERROR;
+    }
+
+    memcpy(bufPtr, helloMsg, totalLen);
+    buffer_write_adv(cpc->writeBuffer, totalLen);
+    return CP_AUTH;
+}
+
+
+
+
