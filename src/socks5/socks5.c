@@ -268,6 +268,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
     enum socks_state state;
     switch(type){
         case IPv4:
+        printf("IPv4\n");
             connection->src_addr_family = AF_INET;
             parser->addr.ipv4.sin_port = parser->port;
             connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
@@ -276,6 +277,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
             state = start_connection(parser, connection, key);
             return state;
         case IPv6:
+        printf("IPv6\n");
             connection->src_addr_family = AF_INET6;
             parser->addr.ipv6.sin6_port = parser->port;
             connection->src_conn->addr_len = sizeof(struct sockaddr_in6);
@@ -284,6 +286,7 @@ manage_req_connection(socks_conn_model * connection, struct req_parser * parser,
             state = start_connection(parser, connection, key);
             return state;
         case FQDN:
+            printf("FQDN!!!\n");
             // Resolución de nombres --> Bloqueante! Usar threads
             return set_name_resolving_thread(key);
         case ADDR_TYPE_NONE:
@@ -311,6 +314,7 @@ req_read(struct selector_key * key){
     buffer_write_adv(&connection->buffers->read_buff, n_received);
 
     enum req_state state = req_parse_full(parser, &connection->buffers->read_buff);
+    printf("Salgo de parsear req, con estado: %d\n", state);
     if(state == REQ_ERROR){
         fprintf(stdout, "Error parsing request message");
         return ERROR;
@@ -319,7 +323,8 @@ req_read(struct selector_key * key){
         enum req_cmd cmd = parser->cmd;
         switch(cmd){
             case REQ_CMD_CONNECT:
-                manage_req_connection(connection, parser, key);
+                printf("Manage_req_connection yendo\n");
+                return manage_req_connection(connection, parser, key);
                 //TODO: SEGUI ACA!!!
             case REQ_CMD_BIND:
                 fprintf(stdout, "REQ_CMD_BIND not supported in this implementation");
@@ -416,7 +421,9 @@ create_response(struct req_parser * parser, buffer * write_buff){
     return -1;
 }
 
-static enum socks_state req_connect(struct selector_key * key){
+static enum socks_state 
+req_connect(struct selector_key * key){
+    printf("Entro a req_connect\n");
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct req_parser * parser = connection->parsers->req_parser;
     unsigned int error = 0;

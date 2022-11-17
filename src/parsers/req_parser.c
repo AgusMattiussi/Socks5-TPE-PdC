@@ -117,10 +117,12 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             break;
         case REQ_DST_PORT:
-        printf("[REQ_DST_PORT] byte to parse %d\n", to_parse);
-
+            printf("[REQ_DST_PORT] byte to parse %d\n", to_parse);
             *parser->where_to = to_parse;
-            if(--parser->to_parse == 0) parser->state = REQ_DONE;
+            if(--parser->to_parse == 0){
+                printf("Termino de parsear el port, y el estado pasa a REQ_DONE\n");
+                parser->state = REQ_DONE;
+            }
             break;
         case REQ_DONE: case REQ_ERROR: break;
         default:
@@ -139,4 +141,5 @@ enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
             return REQ_ERROR;
         }
     }
+    return parser->state;
 }
