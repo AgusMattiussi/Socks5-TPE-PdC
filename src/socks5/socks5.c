@@ -520,7 +520,7 @@ set_copy_struct_config(int fd, struct copy_model_t * copy,
     copy->read_buff = &rd_buff;
     copy->interests = OP_READ;
     copy->connection_interests = OP_READ | OP_WRITE;
-    copy->other = &other_copy;
+    copy->other = other_copy;
 }
 
 static void copy_init(const unsigned state, struct selector_key * key){
@@ -555,6 +555,7 @@ static enum socks_state copy_read(struct selector_key * key){
         uint8_t * buff_ptr = buffer_write_ptr(copy->write_buff, &byte_n);
         ssize_t bytes_rcvd = recv(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
         if(bytes_rcvd > 0){
+            printf("En copy read: %s\n", buff_ptr);
             buffer_write_adv(copy->write_buff, bytes_rcvd);
             copy->other->interests = copy->other->interests | OP_WRITE;
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
@@ -566,8 +567,8 @@ static enum socks_state copy_read(struct selector_key * key){
         copy->connection_interests = copy->connection_interests & complement_mask;
         copy->interests = copy->interests & copy->connection_interests;
         selector_status selector_ret = selector_set_interest(key->s, copy->fd,
-                                        copy->interests);
-        if(selector_ret != SELECTOR_SUCCESS) return ERROR;
+                                       copy->interests);
+        //if(selector_ret != SELECTOR_SUCCESS) return ERROR;
         //TODO: Close read copy.>fd connection. How to?
         // Solution: 
         // https://stackoverflow.com/questions/570793/how-to-stop-a-read-operation-on-a-socket
@@ -583,7 +584,7 @@ static enum socks_state copy_read(struct selector_key * key){
                     copy->other->connection_interests;
             selector_status selector_ret = 
                     selector_set_interest(key->s, copy->other->fd, copy->other->interests);
-            if(selector_ret != SELECTOR_SUCCESS) return ERROR;
+            //if(selector_ret != SELECTOR_SUCCESS) return ERROR;
             int shutdown_ret = shutdown(copy->other->fd, SHUT_WR);
             if(shutdown_ret < 0){
                 fprintf(stdout, "Shutdown failed");
@@ -617,6 +618,7 @@ static enum socks_state copy_write(struct selector_key * key){
     ssize_t bytes_sent = send(key->fd, buff_ptr, byte_n, 0); //TODO: Flags?
 
     if(bytes_sent > 0){
+        printf("BUFF_PTR: %s\n", buff_ptr);
         buffer_read_adv(copy->read_buff, bytes_sent);
         copy->other->interests = copy->other->interests | OP_READ;
         copy->other->interests = copy->other->interests & copy->other->connection_interests;
