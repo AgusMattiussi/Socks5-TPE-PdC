@@ -4,9 +4,11 @@
 uint32_t buf_size = BUFFER_DEFAULT_SIZE;
 uint32_t socks_get_buf_size() { return buf_size; }
 
+
 /*----------------------
  |  Connection functions
  -----------------------*/
+
 
 void conn_read_init(const unsigned state, struct selector_key * key){
     printf("Llego a conn_read_init\n");
@@ -705,3 +707,4 @@ static const struct state_definition states[] = {
 struct state_definition * socks5_all_states(){
     return states;
 }
+

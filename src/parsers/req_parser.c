@@ -143,3 +143,8 @@ enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
     }
     return parser->state;
 }
+
+enum req_state mng_req_parse_full(struct req_parser * parser, buffer * buff){
+    printf("acá tenemos que parsear el request\n");
+    return REQ_DONE;
+}

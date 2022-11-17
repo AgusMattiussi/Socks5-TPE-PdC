@@ -142,5 +142,6 @@ struct req_parser{
 void req_parser_init(struct req_parser * parser);
 
 enum req_state req_parse_full(struct req_parser * parser, buffer * buff);
+enum req_state mng_req_parse_full(struct req_parser * parser, buffer * buff);
 
 #endif

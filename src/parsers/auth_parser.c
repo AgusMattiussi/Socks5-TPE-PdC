@@ -77,3 +77,8 @@ enum auth_state auth_parse_full(struct auth_parser * parser, buffer * buff){
     }
     return parser->state;
 }
+
+enum auth_state mng_auth_parse_full(struct auth_parser * parser, buffer * buff) {
+    printf("acá hay que parsear la autenticación\n");
+    return AUTH_DONE;
+}

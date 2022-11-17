@@ -17,9 +17,11 @@
 #include "selector.h"
 #include "stm.h"
 #include "../socks5/socks5.h"
+#include "../mng/mng.h"
 #include "conn_handler.h"
 
 const struct fd_handler * get_conn_actions_handler();
-int start_server(char * socks_addr, char * socks_port);
+const struct fd_handler * get_mng_conn_actions_handler();
+int start_server(char * socks_addr, char * socks_port, char * mng_addr, char * mng_port);
 
 #endif
