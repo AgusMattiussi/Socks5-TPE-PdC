@@ -2,7 +2,7 @@
 
 
 
-static const struct state_definition controlProtStateDef = {
+static const struct state_definition controlProtStateDef[] = {
     {
         .state = CP_HELLO,
     },
@@ -18,6 +18,30 @@ static const struct state_definition controlProtStateDef = {
     {
         .state = CP_ERROR,
     },
+};
+
+
+static void initStm(struct state_machine * stm){
+    stm->initial = CP_HELLO;
+    stm->max_state = CP_ERROR;
+    stm->states = (const struct state_definition *) &controlProtStateDef;
+    
+    stm_init(stm);
+}
+
+
+//TODO: static? Args?
+controlProtConn * newControlProtConn(){
+    controlProtConn * new = calloc(1, sizeof(controlProtConn));
+    
+    if(new != NULL){
+        initStm(&new->connStm);
+        buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
+        buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
+        
+        new->currentState = CP_HELLO;
+    }
+    return new;
 }
 
 

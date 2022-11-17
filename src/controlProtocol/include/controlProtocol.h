@@ -24,10 +24,10 @@ typedef struct controlProtConn {
     uint8_t writeBufferData[BUFFER_SIZE];
 
     struct state_machine connStm;
-    struct controlProtState currentState;
-
+    controlProtState currentState;
 
 } controlProtConn;
+
 
 
 #endif
