@@ -3,6 +3,12 @@
 static void initStm(struct state_machine * stm);
 static controlProtStmState helloStartWrite(struct selector_key * key);
 static controlProtStmState helloWrite(struct selector_key * key);
+static void onArrival(controlProtStmState state, struct selector_key *key);
+static controlProtStmState authRead(struct selector_key * key);
+static void onDeparture(controlProtStmState state, struct selector_key *key);
+static bool validatePassword(cpAuthParser * authParser);
+
+static int validPassword = false;
 
 static const struct state_definition controlProtStateDef[] = {
     {
@@ -15,6 +21,9 @@ static const struct state_definition controlProtStateDef[] = {
     },
     {
         .state = CP_AUTH,
+        .on_arrival = onArrival,
+        .on_read_ready = authRead,
+        .on_departure = onDeparture
     },
     {
         .state = CP_EXECUTE,
@@ -27,6 +36,17 @@ static const struct state_definition controlProtStateDef[] = {
     },
 };
 
+static bool validatePassword(cpAuthParser * authParser){
+    return strcmp(ADMIN_PASSWORD, authParser->inputPassword) == 0 ? true : false;
+}
+
+static void onArrival(controlProtStmState state, struct selector_key *key){
+    printf("Llegue a CP_AUTH\n");
+}
+
+static void onDeparture(controlProtStmState state, struct selector_key *key){
+    printf("Sali de CP_AUTH\n");
+}
 
 static void initStm(struct state_machine * stm){
     stm->initial = CP_HELLO_START;
@@ -49,7 +69,8 @@ controlProtConn * newControlProtConn(int fd){
         if(new->readBuffer == NULL || new->writeBuffer == NULL){
             //TODO: Manejar Error
         }
-
+        //TODO: Cambiar esto al onArrival?
+        initCpAuthParser(&new->authParser);
         buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
@@ -98,13 +119,16 @@ static controlProtStmState helloStartWrite(struct selector_key * key){
     return CP_HELLO_WRITE;
 }
 
-
+//TODO: Esto se deberia manejar afuera?
 static controlProtStmState helloWrite(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
 
     size_t bytesLeft;
     uint8_t * bufPtr = buffer_read_ptr(cpc->writeBuffer, &bytesLeft);
 
+    if(!buffer_can_write(cpc->writeBuffer)){
+        // TODO: Manejar error
+    }
     int bytesSent = send(key->fd, bufPtr, bytesLeft, 0);
 
     if(bytesSent <= 0){
@@ -123,6 +147,40 @@ static controlProtStmState helloWrite(struct selector_key * key){
 
 static controlProtStmState authRead(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
+
+    if(!buffer_can_read(cpc->readBuffer)){
+        //TODO: Manejar error
+    }
+
+    size_t bytesLeft;
+    buffer_read_ptr(cpc->readBuffer, &bytesLeft);
+
+    if(bytesLeft <= 0){
+        //TODO: Manejar
+    }
+
+    cpAuthParserState parserState;
+    for (int i = 0; i < bytesLeft; i++){
+        cpapParseByte(&cpc->authParser, buffer_read(cpc->readBuffer));
+        parserState = cpc->authParser.currentState;
+
+        if(/* parserState == CPAP_DONE || */ parserState == CPAP_ERROR){
+            //TODO: Manejar error, (DONE antes de tiempo?)
+        }
+    }
+    
+    
+
+    if(parserState == CPAP_ERROR){
+        //TODO: Manejar error
+        return CP_ERROR;
+    }
+
+    if(parserState == CPAP_DONE){
+        validPassword = validatePassword(&cpc->authParser);
+        selector_set_interest_key(key, OP_WRITE);
+    }
+    return CP_AUTH;
 }
 
 

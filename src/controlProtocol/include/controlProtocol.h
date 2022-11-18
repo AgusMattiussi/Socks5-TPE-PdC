@@ -4,14 +4,17 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <stdbool.h>
+#include <string.h>
 
 #include "../../include/stm.h"
 #include "../../include/buffer.h"
+#include "../parsers/cpAuthParser.h"
 
 #define BUFFER_SIZE 1024
 #define CONTROL_PROT_VERSION "0.1"
 
-#define ADMIN_PASSWORD = "pass1234";
+#define ADMIN_PASSWORD "pass1234"
 
 #define HELLO_LEN 10
 
@@ -43,9 +46,13 @@ typedef struct controlProtConn {
     uint8_t writeBufferData[BUFFER_SIZE];
 
     struct state_machine connStm;
+    // TODO: Se usa?
     controlProtStmState currentState;
 
-    //TODO: Deberia ser una lista
+    //TODO: Deberia ser un puntero? (para que se inicialice a demanda)
+    cpAuthParser authParser;
+
+    //TODO: Deberia ser una lista?
     //struct controlProtConn * nextConn;
 
 } controlProtConn;
