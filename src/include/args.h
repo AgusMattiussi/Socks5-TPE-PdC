@@ -24,6 +24,11 @@ struct socks5args {
 
     char           *mng_addr;
     char *          mng_port;
+
+    bool            disectors_enabled;
+
+    struct doh      doh;
+    struct users    users[MAX_USERS];
 };
 
 /**

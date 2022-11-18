@@ -54,7 +54,6 @@ static void passive_socks_socket_handler(struct selector_key * key){
     // con el perror anterior verificamos que pasa bien el malloc
     // Fui probando de cambiar el orden de cierta inicialización de los parametros pero el 
     // SIGSEGV llega en momentos pseudo aleatorios?
-    printf("Entre al socket handler de conexión entrante...\n");
     socks_conn_model * connection = malloc(sizeof(struct socks_conn_model));
     if(connection == NULL) { 
         perror("error:");
@@ -77,35 +76,25 @@ static void passive_socks_socket_handler(struct selector_key * key){
     memset(connection->parsers->auth_parser, 0x00, sizeof(*(connection->parsers->auth_parser)));
     memset(connection->parsers->req_parser, 0x00, sizeof(*(connection->parsers->req_parser)));
 
-
-
-    printf("Inicializo buffers auxiliares\n");
     connection->buffers = malloc(sizeof(struct buffers_t));
     connection->buffers->aux_read_buff = malloc((uint32_t)BUFF_SIZE);
     connection->buffers->aux_write_buff = malloc((uint32_t)BUFF_SIZE);
 
-    printf("Paso mallocs de inicialización de buffers\n");
-
     buffer_init(&connection->buffers->read_buff, BUFF_SIZE, connection->buffers->aux_read_buff);
     buffer_init(&connection->buffers->write_buff, BUFF_SIZE, connection->buffers->aux_write_buff);
 
-    printf("Inicialize buffers\n");
     //State Machine parameter setting
     connection->stm.initial = CONN_READ;
     connection->stm.max_state = DONE;
     connection->stm.states = socks5_all_states();
 
     stm_init(&connection->stm);
-    printf("Vuelvo de stm init\n");
     connection->cli_conn->interests = OP_READ;
     connection->src_conn->interests = OP_NOOP;
-    printf("Incialización de stm...\n");
     //After setting up the configuration, we accept the connection
     connection->cli_conn->addr_len = sizeof(connection->cli_conn->addr);
-    printf("Llegue hasta linea previa de accept\n");
     connection->cli_conn->socket = accept(key->fd, (struct sockaddr *)&connection->cli_conn->addr,
     &connection->cli_conn->addr_len);
-    printf("Pase el accept\n");
     if(connection->cli_conn->socket == -1){
         printf("Error in accept call of line 49 in passive_socks\n");
         //TODO: close_socks5_connection(connection);
@@ -130,14 +119,11 @@ static void passive_socks_socket_handler(struct selector_key * key){
         //close_socks5_connection(connection);
         return;
     }
-    printf("Salgo de start socket aparentemente sin errores!\n");
 }
 
 static int start_socket(char * port, char * addr, 
                         const struct fd_handler * handler, int family){
     int ret_fd;
-    printf("Entro a start socket\n");
-
     struct addrinfo hints; //Naming corresponding to fields in 'man getaddrinfo'
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = family;
@@ -206,7 +192,6 @@ static int start_socket(char * port, char * addr,
         printf("Error selector_register in call of line 138\n");
         goto finally;
     }
-    printf("Termine ejecución de create_socket correctamente!\n");
 finally:
     freeaddrinfo(res);
     return ret_fd;
@@ -217,7 +202,6 @@ static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
 
 
 int start_server(char * socks_addr, char * socks_port){
-    printf("Entro a start server\n");
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1;
     int ret_code = -1;
 
@@ -259,7 +243,6 @@ int start_server(char * socks_addr, char * socks_port){
     }
 
     while(1){
-        printf("Entre al superloop de start server\n");
         int selector_ret_value = selector_select(selector);
         if(selector_ret_value != SELECTOR_SUCCESS){goto finally;}
     }
