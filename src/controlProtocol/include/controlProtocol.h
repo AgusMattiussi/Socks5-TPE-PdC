@@ -19,7 +19,7 @@
 #define HELLO_LEN 10
 
 typedef enum controlProtStmState {
-    CP_HELLO_START,
+    CP_HELLO,
     /* CP_HELLO_WRITE, */
     CP_AUTH,
     CP_EXECUTE,
@@ -31,6 +31,10 @@ typedef enum controlProtStatus{
     STATUS_ERROR = 0,
     STATUS_SUCCESS
 } controlProtStatus;
+
+typedef enum controlProtErrorCode{
+    CPERROR_INVALID_PASSWORD
+} controlProtErrorCode;
 
 
 /* Estructura para manejar los datos de una conexion

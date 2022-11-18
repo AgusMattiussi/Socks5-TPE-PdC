@@ -4,15 +4,16 @@ static void initStm(struct state_machine * stm);
 static controlProtStmState helloWrite(struct selector_key * key);
 static void onArrival(controlProtStmState state, struct selector_key *key);
 static controlProtStmState authRead(struct selector_key * key);
+static controlProtStmState authWrite(struct selector_key * key);
 static void onDeparture(controlProtStmState state, struct selector_key *key);
 static bool validatePassword(cpAuthParser * authParser);
-static void cpError(struct selector_key * key);
+static unsigned cpError(struct selector_key * key);
 
 static int validPassword = false;
 
 static const struct state_definition controlProtStateDef[] = {
     {
-        .state = CP_HELLO_START,
+        .state = CP_HELLO,
         .on_write_ready = helloWrite
     },
     /* {
@@ -23,6 +24,7 @@ static const struct state_definition controlProtStateDef[] = {
         .state = CP_AUTH,
         .on_arrival = onArrival,
         .on_read_ready = authRead,
+        .on_write_ready = authWrite,
         .on_departure = onDeparture
     },
     {
@@ -43,24 +45,26 @@ static bool validatePassword(cpAuthParser * authParser){
 }
 
 static void onArrival(controlProtStmState state, struct selector_key *key){
-    printf("Llegue a CP_AUTH\n");
+    printf("[CP_AUTH/onArrival] Llegue a CP_AUTH\n");
 }
 
 static void onDeparture(controlProtStmState state, struct selector_key *key){
-    printf("Sali de CP_AUTH\n");
+    printf("[CP_AUTH/onDeparture] Sali de CP_AUTH\n");
+    controlProtConn * cpc = (controlProtConn *) key->data;
+    initCpAuthParser(&cpc->authParser);
 }
 
 static void initStm(struct state_machine * stm){
-    stm->initial = CP_HELLO_START;
+    stm->initial = CP_HELLO;
     stm->max_state = CP_ERROR;
     stm->states = (const struct state_definition *) &controlProtStateDef;
     
     stm_init(stm);
 }
 
-static void cpError(struct selector_key * key){
-    printf("ERROR CP_ERROR");
-    abort();
+static unsigned cpError(struct selector_key * key){
+    printf("\nERROR CP_ERROR. Reiniciando...\n");
+    return CP_HELLO;
 }
 
 
@@ -83,7 +87,7 @@ controlProtConn * newControlProtConn(int fd){
         
         new->fd = fd;
         new->interests = OP_WRITE;  // El protocolo comienza escribiendo HELLO
-        new->currentState = CP_HELLO_START;
+        new->currentState = CP_HELLO;
     }
     return new;
 }
@@ -127,7 +131,7 @@ void cpWriteHandler(struct selector_key * key){
     buffer_read_adv(cpc->writeBuffer, bytesSent);
 }
 
-
+/* Escribe en el readBuffer lo que me haya enviado el cliente */
 void cpReadHandler(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
 
@@ -158,13 +162,19 @@ void cpReadHandler(struct selector_key * key){
 
 //TODO: Deberia usar el buffer?
 static controlProtStmState helloWrite(struct selector_key * key){
-    printf("[CP_HELLO_START]");
+    printf("[CP_HELLO]\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
+    if(!buffer_can_write(cpc->writeBuffer)){
+        //TODO: Manejar error
+        printf("[CP_HELLO] Error: !buffer_can_write\n");
+    }
+
     int verLen = strlen(CONTROL_PROT_VERSION);
-    int totalLen = verLen + 3; // STATUS | HAS_DATA | DATA\n
+    int totalLen = verLen + 3; // STATUS = 1  | HAS_DATA = 1 | DATA\n
     
     char * helloMsg = calloc(verLen + 3, sizeof(char));
+    //FIXME: Cambiar de %hhx a %c
     sprintf(helloMsg, "%hhx%hhx%s\n", 1, 1, CONTROL_PROT_VERSION);
 
     size_t maxWrite;
@@ -186,7 +196,7 @@ static controlProtStmState helloWrite(struct selector_key * key){
     return CP_AUTH;
 }
 
-
+/* Lee la contrasenia que envio el usuario y la parsea a una estructura*/
 static controlProtStmState authRead(struct selector_key * key){
     printf("[AUTH] authRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
@@ -206,7 +216,7 @@ static controlProtStmState authRead(struct selector_key * key){
     }
 
     cpAuthParserState parserState;
-    for (int i = 0; i < bytesLeft; i++){
+    for (int i = 0; i < bytesLeft && parserState != CPAP_DONE; i++){
         cpapParseByte(&cpc->authParser, buffer_read(cpc->readBuffer));
         parserState = cpc->authParser.currentState;
 
@@ -226,10 +236,51 @@ static controlProtStmState authRead(struct selector_key * key){
     if(parserState == CPAP_DONE){
         validPassword = validatePassword(&cpc->authParser);
         selector_set_interest_key(key, OP_WRITE);
-        printf("%s\n", validPassword ? "CONTRASENIA CORRECTA":"CONTRASENIA INCORRECTA");
+        initCpAuthParser(&cpc->authParser); // Reinicio el Parser
     }
 
     return CP_AUTH;
 }
 
+/* Le envia al usuario la respuesta a su autenticacion */
+static controlProtStmState authWrite(struct selector_key * key){
+    printf("[AUTH] authWrite\n");
+    controlProtConn * cpc = (controlProtConn *) key->data;
+    char authResult[10] = {'\0'};
+    int arSize = 0;
 
+    if(!buffer_can_write(cpc->writeBuffer)){
+        //TODO: Manejar error
+        printf("[AUTH/authWrite] Error: !buffer_can_write\n");
+    }
+
+    if(validPassword){
+        printf("[AUTH/authWrite] Valid Password!\n");
+        authResult[arSize++] = (char) STATUS_SUCCESS; // STATUS = 1 
+        authResult[arSize++] = '\0';                  // HAS_DATA = 0
+    } else {
+        printf("[AUTH/authWrite] Invalid Password :(\n");
+        authResult[arSize++] = (char) STATUS_ERROR;   // STATUS = 0 
+        authResult[arSize++] = '\1';                  // HAS_DATA = 1
+        authResult[arSize++] = (char) CPERROR_INVALID_PASSWORD;
+        authResult[arSize++] = '\n';
+    }
+
+    size_t maxWrite;
+    uint8_t * writePtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
+
+    if(arSize > maxWrite){
+        //TODO: Buffer lleno. Manejar error
+        return CP_ERROR;
+    }
+
+    memcpy(writePtr, authResult, arSize);
+    buffer_write_adv(cpc->writeBuffer, arSize);
+
+    cpc->interests = OP_READ;
+    selector_set_interest_key(key, cpc->interests);
+
+    if(!validPassword)
+        return CP_AUTH; 
+    return CP_EXECUTE;
+}
