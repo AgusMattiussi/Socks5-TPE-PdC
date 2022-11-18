@@ -88,6 +88,7 @@ typedef struct socks_conn_model{
 
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;
+    bool guardian;
 
 } socks_conn_model;
 

@@ -43,23 +43,7 @@
 
 
 void socksv5_passive_accept(struct selector_key * key);
-/* void serverRead(struct selector_key *key);
-void serverWrite(struct selector_key *key);
-void clientRead(struct selector_key *key);
-void clientWrite(struct selector_key *key);
-void newFdClose(struct selector_key *key);
-void newFdBlock(struct selector_key *key); */
-
 static bool done = false;
-/* static buffer clientBuffer;
-static buffer serverBuffer;
-static uint8_t clientBufferData[1024];
-static uint8_t serverBufferData[1024]; */
-
-/* int clientFd = -1;
-int serverFd = -1;
-int clientInterest = OP_NOOP;
-int serverInterest = OP_NOOP; */
 
 static void
 sigterm_handler(const int signal) {
@@ -71,10 +55,6 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, char **argv) {
-    //unsigned port = 1080;
-    /* char * destPort = "9090";
-    char * destIp = "localhost"; */
-
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT, sigterm_handler);
 

@@ -450,7 +450,10 @@ req_connect(struct selector_key * key) {
     if(getsockopt_ret == 0){
         if(optval != 0){
             if (parser->type == FQDN) {
+                printf("Paso por el selector unregister!!!\n");
+                connection->guardian = true;
                 selector_unregister_fd(key->s, connection->src_conn->socket);
+                connection->guardian = false;
                 close(connection->src_conn->socket);
                 return req_resolve(key);
             }
