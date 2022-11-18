@@ -1,7 +1,6 @@
 #include "include/controlProtocol.h"
 
 static void initStm(struct state_machine * stm);
-static controlProtStmState helloStartWrite(struct selector_key * key);
 static controlProtStmState helloWrite(struct selector_key * key);
 static void onArrival(controlProtStmState state, struct selector_key *key);
 static controlProtStmState authRead(struct selector_key * key);
@@ -13,12 +12,12 @@ static int validPassword = false;
 static const struct state_definition controlProtStateDef[] = {
     {
         .state = CP_HELLO_START,
-        .on_write_ready = helloStartWrite
-    },
-    {
-        .state = CP_HELLO_WRITE,
         .on_write_ready = helloWrite
     },
+    /* {
+        .state = CP_HELLO_WRITE,
+        .on_write_ready = helloWrite
+    }, */
     {
         .state = CP_AUTH,
         .on_arrival = onArrival,
@@ -90,19 +89,48 @@ void freeControlProtConn(controlProtConn * cpc){
     free(cpc);
 }
 
+/* =========================== Handlers para el fd_handler =============================*/
+
+/* Lee del writeBuffer lo que haya dejado el servidor del protocolo 
+    de control y se lo envia al cliente */
+void cpWriteHandler(struct selector_key * key){
+    controlProtConn * cpc = (controlProtConn *) key->data;
+
+    /* Llamo a la funcion de escritura de este estado. 
+        Actualizo el estado actual */
+    cpc->currentState = stm_handler_write(&cpc->connStm, key);
+
+    if(!buffer_can_read(cpc->writeBuffer)){
+        // TODO: No hay bytes para leer. Manejar error
+        printf("[cpWriteHandler] Error: buffer_can_read fallo\n");
+        return;
+    }
+
+    size_t bytesLeft;
+    uint8_t * readPtr = buffer_read_ptr(cpc->writeBuffer, &bytesLeft);
+
+    int bytesSent = send(cpc->fd, readPtr, bytesLeft, 0);
+    if(bytesSent <= 0){
+        //TODO: Error o conexion cerrada. Manejar
+        printf("[cpWriteHandler] Error: bytesSent <= 0\n");
+        return;
+    }
+
+    buffer_read_adv(cpc->writeBuffer, bytesSent);
+}
+
+/* ================== Handlers para cada estado de la STM ======================== */
+
 //TODO: Deberia usar el buffer?
-static controlProtStmState helloStartWrite(struct selector_key * key){
+static controlProtStmState helloWrite(struct selector_key * key){
+    printf("[CP_HELLO_START]");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
     int verLen = strlen(CONTROL_PROT_VERSION);
-
-    /* Mensaje de HELLO */
-    char helloMsg[HELLO_LEN] = {'\0'};
-    helloMsg[0] = STATUS_SUCCESS;       // Status: Success
-    helloMsg[1] = 1;                    // HAS_DATA: 1 linea
-    memcpy(&helloMsg[2], CONTROL_PROT_VERSION, verLen);
-    helloMsg[verLen + 3] = '\n';
-    int totalLen = verLen + 4;
+    int totalLen = verLen + 3; // STATUS | HAS_DATA | DATA\n
+    
+    char * helloMsg = calloc(verLen + 3, sizeof(char));
+    sprintf(helloMsg, "%hhx%hhx%s\n", 1, 1, CONTROL_PROT_VERSION);
 
     size_t maxWrite;
     uint8_t * bufPtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
@@ -115,13 +143,17 @@ static controlProtStmState helloStartWrite(struct selector_key * key){
     memcpy(bufPtr, helloMsg, totalLen);
     buffer_write_adv(cpc->writeBuffer, totalLen);
 
+    free(helloMsg);
+
     //TODO: Necesario?
-    selector_set_interest_key(key, OP_WRITE);
-    return CP_HELLO_WRITE;
+    cpc->interests = OP_READ;
+    selector_set_interest_key(key, cpc->interests);
+    return CP_AUTH;
 }
 
 //TODO: Esto se deberia manejar afuera?
-static controlProtStmState helloWrite(struct selector_key * key){
+/* static controlProtStmState helloWrite(struct selector_key * key){
+    printf("[CP_HELLO_WRITE]\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
     size_t bytesLeft;
@@ -144,9 +176,10 @@ static controlProtStmState helloWrite(struct selector_key * key){
     // Termine de enviar el HELLO
     selector_set_interest_key(key, OP_READ);
     return CP_AUTH;
-}
+} */
 
 static controlProtStmState authRead(struct selector_key * key){
+    printf("[AUTH] authRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
     if(!buffer_can_read(cpc->readBuffer)){

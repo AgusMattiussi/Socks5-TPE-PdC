@@ -20,7 +20,7 @@
 
 typedef enum controlProtStmState {
     CP_HELLO_START,
-    CP_HELLO_WRITE,
+    /* CP_HELLO_WRITE, */
     CP_AUTH,
     CP_EXECUTE,
     CP_OK,
@@ -59,5 +59,6 @@ typedef struct controlProtConn {
 } controlProtConn;
 
 controlProtConn * newControlProtConn(int fd);
+void cpWriteHandler(struct selector_key * key);
 
 #endif

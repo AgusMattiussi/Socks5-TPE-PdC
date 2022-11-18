@@ -137,15 +137,25 @@ static void passive_mng_socket_handler(struct selector_key * key){
     printf("Salgo de start socket aparentemente sin errores!\n");
 }
 
-static void dummyFunction(struct selector_key * key){
-    printf("\n DUMMY \n");
+static void cpReadHandler(struct selector_key * key){
+    printf("\n DUMMY READ \n");
+}
+
+
+
+static void dummyBlock(struct selector_key * key){
+    printf("\n DUMMY BLOCK\n");
+}
+
+static void dummyClose(struct selector_key * key){
+    printf("\n DUMMY CLOSE\n");
 }
 
 const fd_handler cpFdHandler = {
-    .handle_read = dummyFunction,
-    .handle_write = dummyFunction,
-    .handle_block = dummyFunction,
-    .handle_close = dummyFunction
+    .handle_read = cpReadHandler,
+    .handle_write = cpWriteHandler,
+    .handle_block = dummyBlock,
+    .handle_close = dummyClose
 };
 
 
