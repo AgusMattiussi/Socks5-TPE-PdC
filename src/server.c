@@ -137,11 +137,6 @@ static void passive_mng_socket_handler(struct selector_key * key){
     printf("Salgo de start socket aparentemente sin errores!\n");
 }
 
-static void cpReadHandler(struct selector_key * key){
-    printf("\n DUMMY READ \n");
-}
-
-
 
 static void dummyBlock(struct selector_key * key){
     printf("\n DUMMY BLOCK\n");

@@ -6,6 +6,7 @@ static void onArrival(controlProtStmState state, struct selector_key *key);
 static controlProtStmState authRead(struct selector_key * key);
 static void onDeparture(controlProtStmState state, struct selector_key *key);
 static bool validatePassword(cpAuthParser * authParser);
+static void cpError(struct selector_key * key);
 
 static int validPassword = false;
 
@@ -32,6 +33,8 @@ static const struct state_definition controlProtStateDef[] = {
     },
     {
         .state = CP_ERROR,
+        .on_read_ready = cpError,
+        .on_write_ready = cpError,
     },
 };
 
@@ -53,6 +56,11 @@ static void initStm(struct state_machine * stm){
     stm->states = (const struct state_definition *) &controlProtStateDef;
     
     stm_init(stm);
+}
+
+static void cpError(struct selector_key * key){
+    printf("ERROR CP_ERROR");
+    abort();
 }
 
 
@@ -119,6 +127,33 @@ void cpWriteHandler(struct selector_key * key){
     buffer_read_adv(cpc->writeBuffer, bytesSent);
 }
 
+
+void cpReadHandler(struct selector_key * key){
+    controlProtConn * cpc = (controlProtConn *) key->data;
+
+    if(!buffer_can_write(cpc->readBuffer)){
+        // TODO: Buffer lleno. Manejar error
+        printf("[cpReadHandler] Error: buffer_can_write fallo\n");
+        return;
+    }
+
+    size_t bytesLeft;
+    uint8_t * readPtr = buffer_write_ptr(cpc->readBuffer, &bytesLeft);
+
+    int bytesRecv = recv(cpc->fd, readPtr, bytesLeft, MSG_DONTWAIT);
+    if(bytesRecv <= 0){
+        //TODO: Error o conexion cerrada. Manejar
+        printf("[cpReadHandler] Error: bytesRecv <= 0\n");
+        return;
+    }
+
+    buffer_write_adv(cpc->readBuffer, bytesRecv);
+
+    /* Llamo a la funcion de lectura de este estado. 
+        Actualizo el estado actual */
+    cpc->currentState = stm_handler_read(&cpc->connStm, key);
+}
+
 /* ================== Handlers para cada estado de la STM ======================== */
 
 //TODO: Deberia usar el buffer?
@@ -151,45 +186,22 @@ static controlProtStmState helloWrite(struct selector_key * key){
     return CP_AUTH;
 }
 
-//TODO: Esto se deberia manejar afuera?
-/* static controlProtStmState helloWrite(struct selector_key * key){
-    printf("[CP_HELLO_WRITE]\n");
-    controlProtConn * cpc = (controlProtConn *) key->data;
-
-    size_t bytesLeft;
-    uint8_t * bufPtr = buffer_read_ptr(cpc->writeBuffer, &bytesLeft);
-
-    if(!buffer_can_write(cpc->writeBuffer)){
-        // TODO: Manejar error
-    }
-    int bytesSent = send(key->fd, bufPtr, bytesLeft, 0);
-
-    if(bytesSent <= 0){
-        //TODO: Manejar error
-    }
-
-    buffer_read_adv(cpc->writeBuffer, bytesSent);
-
-    if(bytesSent < bytesLeft) // Todavia queda parte del HELLO por enviar
-        return CP_HELLO_WRITE;
-
-    // Termine de enviar el HELLO
-    selector_set_interest_key(key, OP_READ);
-    return CP_AUTH;
-} */
 
 static controlProtStmState authRead(struct selector_key * key){
     printf("[AUTH] authRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
     if(!buffer_can_read(cpc->readBuffer)){
+        printf("[AUTH/authRead] Buffer Vacio: !buffer_can_read\n");
         //TODO: Manejar error
+        return CP_AUTH;
     }
 
     size_t bytesLeft;
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
 
     if(bytesLeft <= 0){
+        printf("[AUTH/authRead] Error: bytesLeft <= 0\n");
         //TODO: Manejar
     }
 
@@ -200,21 +212,23 @@ static controlProtStmState authRead(struct selector_key * key){
 
         if(/* parserState == CPAP_DONE || */ parserState == CPAP_ERROR){
             //TODO: Manejar error, (DONE antes de tiempo?)
+            printf("[AUTH/authRead] Error: CPAP_ERROR (en for)\n");
+            return CP_ERROR;
         }
     }
-    
-    
 
     if(parserState == CPAP_ERROR){
         //TODO: Manejar error
+        printf("[AUTH/authRead] Error: CPAP_ERROR\n");
         return CP_ERROR;
     }
 
     if(parserState == CPAP_DONE){
         validPassword = validatePassword(&cpc->authParser);
         selector_set_interest_key(key, OP_WRITE);
-        printf("Contrasenia Valida!\n");
+        printf("%s\n", validPassword ? "CONTRASENIA CORRECTA":"CONTRASENIA INCORRECTA");
     }
+
     return CP_AUTH;
 }
 
