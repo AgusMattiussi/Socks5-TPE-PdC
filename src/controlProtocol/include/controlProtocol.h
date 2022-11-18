@@ -38,6 +38,7 @@ typedef enum controlProtStatus{
 typedef struct controlProtConn {
     // TODO: Manejar datos de la conexion
     int fd;
+    int interests;
 
     buffer * readBuffer;
     buffer * writeBuffer;
@@ -57,6 +58,6 @@ typedef struct controlProtConn {
 
 } controlProtConn;
 
-
+controlProtConn * newControlProtConn(int fd);
 
 #endif

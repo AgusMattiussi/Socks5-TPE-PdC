@@ -14,7 +14,7 @@ stm_init(struct state_machine *stm) {
         if(i != stm->states[i].state) {
             abort();
         } else {
-            printf("%d\n", i);
+            printf("[state_machine] Iniciado estado: %d\n", i);
         }
     }
     if(stm->initial < stm->max_state) {

@@ -75,6 +75,7 @@ controlProtConn * newControlProtConn(int fd){
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
         new->fd = fd;
+        new->interests = OP_WRITE;  // El protocolo comienza escribiendo HELLO
         new->currentState = CP_HELLO_START;
     }
     return new;
@@ -179,6 +180,7 @@ static controlProtStmState authRead(struct selector_key * key){
     if(parserState == CPAP_DONE){
         validPassword = validatePassword(&cpc->authParser);
         selector_set_interest_key(key, OP_WRITE);
+        printf("Contrasenia Valida!\n");
     }
     return CP_AUTH;
 }

@@ -8,15 +8,15 @@
 //TODO (General): Set error codes in all goto finally calls.
 
 static void passive_socks_socket_handler(struct selector_key * key);
-
 static void passive_mng_socket_handler(struct selector_key * key);
+static void passive_cp_socket_handler(struct selector_key * key) ;
 
 static fd_selector selector;
 
 const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
 //TODO: Should this functions have a &? 
 
-const struct fd_handler passive_socket_fd_mng_handler = {passive_mng_socket_handler, 0, 0, 0};
+const struct fd_handler passive_socket_fd_mng_handler = {passive_cp_socket_handler, 0, 0, 0};
 
 const struct fd_handler mng_connection_actions_handler = { 
     mng_connection_read, mng_connection_write,
@@ -135,6 +135,55 @@ static void passive_mng_socket_handler(struct selector_key * key){
         return;
     }
     printf("Salgo de start socket aparentemente sin errores!\n");
+}
+
+static void dummyFunction(struct selector_key * key){
+    printf("\n DUMMY \n");
+}
+
+const fd_handler cpFdHandler = {
+    .handle_read = dummyFunction,
+    .handle_write = dummyFunction,
+    .handle_block = dummyFunction,
+    .handle_close = dummyFunction
+};
+
+
+static void passive_cp_socket_handler(struct selector_key * key) {
+    printf(" En passive_cp_socket_handler\n");
+    controlProtConn * new;
+    
+    /* Aceptamos la conexion entrante */
+    int clientFd = accept(key->fd, NULL, NULL);
+    if(clientFd < 0){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (accept)\n");
+        return;
+    }
+
+    /* Hacemos el socket no bloqueante */
+    if(selector_fd_set_nio(clientFd) == -1){
+        // TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (selector_fd_set_nio)\n");
+        return;
+    }
+
+    /* Inicializamos la estructura con los datos de esta conexion */
+    // TODO: Considerar aniadirlo a una lista?
+    new = newControlProtConn(clientFd);
+    if(new == NULL){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
+        return;
+    }
+
+    if(selector_register(key->s, new->fd, /*TODO:*/ &cpFdHandler, new->interests, new) != 0){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (selector_register)\n");
+        return;
+    }
+
+    printf(" Socket pasivo creado exitosamente \n");
 }
 
 static void passive_socks_socket_handler(struct selector_key * key){

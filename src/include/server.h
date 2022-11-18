@@ -19,6 +19,7 @@
 #include "../socks5/socks5.h"
 #include "../mng/mng.h"
 #include "conn_handler.h"
+#include "../controlProtocol/include/controlProtocol.h"
 
 const struct fd_handler * get_conn_actions_handler();
 const struct fd_handler * get_mng_conn_actions_handler();
