@@ -121,3 +121,8 @@ static controlProtStmState helloWrite(struct selector_key * key){
     return CP_AUTH;
 }
 
+static controlProtStmState authRead(struct selector_key * key){
+    controlProtConn * cpc = (controlProtConn *) key->data;
+}
+
+

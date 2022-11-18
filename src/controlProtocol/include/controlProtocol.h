@@ -11,6 +11,8 @@
 #define BUFFER_SIZE 1024
 #define CONTROL_PROT_VERSION "0.1"
 
+#define ADMIN_PASSWORD = "pass1234";
+
 #define HELLO_LEN 10
 
 typedef enum controlProtStmState {
