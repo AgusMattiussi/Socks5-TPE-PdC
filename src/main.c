@@ -30,6 +30,7 @@
 #include "include/buffer.h"
 #include "include/args.h"
 #include "include/server.h"
+#include "include/stm.h"
 
 //TODO: #include "socks5nio.h"
 
@@ -62,8 +63,10 @@ int serverInterest = OP_NOOP; */
 
 static void
 sigterm_handler(const int signal) {
-    printf("signal %d, cleaning up and exiting\n",signal);
+    printf("signal %s, cleaning up and exiting\n", "SIGINT");
     done = true;
+    cleanup();
+    exit(0);
 }
 
 int

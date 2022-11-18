@@ -21,5 +21,6 @@
 
 const struct fd_handler * get_conn_actions_handler();
 int start_server(char * socks_addr, char * socks_port);
+void cleanup();
 
 #endif

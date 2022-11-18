@@ -270,3 +270,8 @@ finally:
     return ret_code;
 
 }
+
+void
+cleanup(){
+    selector_destroy(selector);
+}
