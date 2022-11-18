@@ -4,6 +4,7 @@
 #include <string.h>    /* memset */
 #include <errno.h>
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "include/args.h"
 
@@ -21,7 +22,9 @@ static char * port(char * s) {
 }
 
 static void
-user(char *s, struct users *user) {
+user(char *s) {
+    user_t * user = malloc(sizeof(user_t));
+
     char *p = strchr(s, ':');
     if(p == NULL) {
         fprintf(stderr, "password not found\n");
@@ -32,7 +35,7 @@ user(char *s, struct users *user) {
         user->name = s;
         user->pass = p;
     }
-
+    add_user(user);
 }
 
 static void
@@ -83,46 +86,43 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
         if (c == -1)
             break;
         switch (c) {
-        case 'h':
-            usage(argv[0]);
+            case 'h':
+                usage(argv[0]);
+                    goto finally;
+            case 'l':
+                args->socks_addr = optarg;
+                break;
+            case 'L':
+                args->mng_addr = optarg;
+                break;
+            case 'N':
+                //change_dissector_state(false);
+                break;
+            case 'p':
+                args->socks_port = port(optarg);
+                if (args->socks_port == NULL) {
+                    ret_code = 1;
+                    goto finally;
+                }
+                break;
+            case 'P':
+                args->mng_port = port(optarg);
+                if (args->mng_port == NULL) {
+                    ret_code = 1;
+                    goto finally;
+                }
+                break;
+            case 'u': 
+                user(optarg);
+                break;
+            case 'v':
+                version();
                 goto finally;
-        case 'l':
-            args->socks_addr = optarg;
-            break;
-        case 'L':
-            args->mng_addr = optarg;
-            break;
-        case 'N':
-            //change_dissector_state(false);
-            break;
-        case 'p':
-            args->socks_port = port(optarg);
-            if (args->socks_port == NULL) {
+            default:
+                fprintf(stderr, "unknown argument %d.\n", c);
                 ret_code = 1;
                 goto finally;
             }
-            break;
-        case 'P':
-            args->mng_port = port(optarg);
-            if (args->mng_port == NULL) {
-                ret_code = 1;
-                goto finally;
-            }
-            break;
-        case 'u':
-            //parse_and_add(optarg, false);
-            break;
-        case 'U':
-            //parse_and_add(optarg, true);
-            break;
-        case 'v':
-            version();
-                goto finally;
-        default:
-            fprintf(stderr, "unknown argument %d.\n", c);
-                ret_code = 1;
-                goto finally;
-        }
     }
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");

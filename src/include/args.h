@@ -5,10 +5,10 @@
 
 #define MAX_USERS 10
 
-struct users {
+typedef struct user_t {
     char *name;
     char *pass;
-};
+} user_t;
 
 struct doh {
     char           *host;
@@ -28,7 +28,7 @@ struct socks5args {
     bool            disectors_enabled;
 
     struct doh      doh;
-    struct users    users[MAX_USERS];
+    //struct users    users[MAX_USERS];
 };
 
 /**

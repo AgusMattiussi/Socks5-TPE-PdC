@@ -123,7 +123,10 @@ conn_write(struct selector_key * key){
         //TODO: Build process_authentication_request (declared, not built yet)
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
-
+        if(is_authenticated == -1){
+            fprintf(stdout, "[SOCKS] User does not exist. Exiting.\n");
+            return ERROR;
+        }
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;
         
