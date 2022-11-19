@@ -3,6 +3,7 @@
 
 #include "controlProtocol.h"
 
-int addProxyUser(cpCommandParser * parser, char * answer);
+void addProxyUser(cpCommandParser * parser, char * answer);
+void removeProxyUser(cpCommandParser * parser, char * answer);
 
 #endif

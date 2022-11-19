@@ -352,7 +352,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
             addProxyUser(parser, answer);
             break;
         case CP_REM_USER:
-            /* code */
+            removeProxyUser(parser, answer); 
             break;
         case CP_CHANGE_PASS:
             /* code */
