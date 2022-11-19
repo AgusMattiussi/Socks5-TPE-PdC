@@ -175,8 +175,7 @@ static controlProtStmState helloWrite(struct selector_key * key){
     int totalLen = verLen + 3; // STATUS = 1  | HAS_DATA = 1 | DATA\n
     
     char * helloMsg = calloc(verLen + 3, sizeof(char));
-    //FIXME: Cambiar de %hhx a %c
-    sprintf(helloMsg, "%hhx%hhx%s\n", 1, 1, CONTROL_PROT_VERSION);
+    sprintf(helloMsg, "%c%c%s\n", 1, 1, CONTROL_PROT_VERSION);
 
     size_t maxWrite;
     uint8_t * bufPtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
@@ -355,7 +354,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
             removeProxyUser(parser, answer); 
             break;
         case CP_CHANGE_PASS:
-            /* code */
+            changePassword(parser, answer);
             break;
         case CP_LIST_USERS:
             /* code */

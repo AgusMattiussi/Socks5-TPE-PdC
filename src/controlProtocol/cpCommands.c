@@ -30,6 +30,7 @@ void addProxyUser(cpCommandParser * parser, char * answer){
     }
 
     /* TODO: Agregar usuario y contrasenia */
+    // Si se habia alcanzado el limite, retornar error
 
     noDataStatusSuccessAnswer(answer);
     return;
@@ -50,9 +51,31 @@ void removeProxyUser(cpCommandParser * parser, char * answer){
     memcpy(user, parser->data, parser->dataSize);
 
     /* TODO: Eliminar usuario */
-    // TODO: Si no existia, devolver 0
+    // TODO: Si no existia, devolver error
 
     free(user);
     noDataStatusSuccessAnswer(answer);
     return;    
+}
+
+void changePassword(cpCommandParser * parser, char * answer){
+    char * user, * newPass;
+
+    if(parser->hasData == 0){
+        statusFailedAnswer(answer, CPERROR_COMMAND_NEEDS_DATA);
+        return;
+    }
+
+    user = strtok(parser->data, TOKEN_DELIMITER);
+    newPass = strtok(NULL, LINE_DELIMITER);
+
+    if(user == NULL || newPass == NULL){
+        statusFailedAnswer(answer, CPERROR_INVALID_FORMAT);
+        return;
+    }
+
+    /* TODO: Cambiar contrasenia del usuario si existia */
+
+    noDataStatusSuccessAnswer(answer);
+    return;
 }
