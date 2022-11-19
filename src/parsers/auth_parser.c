@@ -18,16 +18,15 @@ void plain_parse_byte(struct auth_parser * parser, uint8_t to_parse){
 
 void set_len_to_parse(struct auth_parser * parser, uint8_t to_parse){
     enum auth_state current = parser->state;
-    if(to_parse == 0){
-        if(current == AUTH_ULEN) parser->state = AUTH_PLEN;
-        else{ /*Can only be PLEN*/ parser->state = AUTH_DONE;}
-    }
-    else{
+    if(to_parse != 0){
         parser->to_parse = to_parse;
         parser->state = current == AUTH_ULEN ? AUTH_UNAME : AUTH_PASSWD;
         parser->where_to = current == AUTH_ULEN ? parser->username : parser->password;
         parser->where_to[to_parse]='\0'; //Delimiting end of string dynamically.
+        return;
     }
+    if(current == AUTH_ULEN) parser->state = AUTH_PLEN;
+    else{ /*Can only be PLEN*/ parser->state = AUTH_DONE;}
 }
 
 void auth_parse_byte(struct auth_parser * parser, uint8_t to_parse){

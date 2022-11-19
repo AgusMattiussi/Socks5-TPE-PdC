@@ -125,7 +125,7 @@ static void passive_socks_socket_handler(struct selector_key * key){
         close_socks_conn(connection);
         return;
     }
-    add_socks_connection();
+    add_socks_connection(); // Metrics
 }
 
 static int start_socket(char * port, char * addr, 
@@ -202,7 +202,6 @@ finally:
     if(error == -1 && ret_fd != -1){ close(ret_fd); ret_fd = -1;}
     freeaddrinfo(res);
     return ret_fd;
-
 }
 
 void 
@@ -229,14 +228,10 @@ start_server(char * socks_addr, char * socks_port){
 finally:
     if(fd_socks_ipv4 != -1){close(fd_socks_ipv4);}
     if(fd_socks_ipv6 != -1){close(fd_socks_ipv6);}
-    //return ret_code;
-
 }
 
 void
 set_selector(fd_selector * new_selector){ selector = *new_selector; }
 
 void
-cleanup(){
-    selector_destroy(selector);
-}
+cleanup(){ selector_destroy(selector); }

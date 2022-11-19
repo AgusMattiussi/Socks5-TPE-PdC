@@ -34,18 +34,11 @@
 #include "logger/logger.h"
 #include "include/metrics.h"
 
-//TODO: #include "socks5nio.h"
-
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
 #define INITIAL_N 20
 
-/* struct fdStruct {
-    int fd;
-}; */
-
-
-void socksv5_passive_accept(struct selector_key * key);
+//void socksv5_passive_accept(struct selector_key * key);
 static bool done = false;
 
 static void

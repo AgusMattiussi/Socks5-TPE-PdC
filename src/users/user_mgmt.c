@@ -18,6 +18,9 @@ valid_credentials(char * username, char * password, char * user2, char * pass2){
     return strcmp(username, user2) == 0 && strcmp(password, pass2) == 0;
 }
 
+bool
+needs_auth(){ return require_auth; }
+
 char *
 get_curr_user(){ return curr_user; }
 

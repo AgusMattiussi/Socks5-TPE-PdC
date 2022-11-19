@@ -2,7 +2,7 @@
 #include "../logger/logger.h"
 
 #define REQ_DST_PORT_BYTES 2
-
+#define FIRST_FQDN_BYTE_PARSE -2
 void 
 req_parser_init(struct req_parser * parser){
     parser->state = REQ_VER;
@@ -24,13 +24,8 @@ set_dst_port_config(struct req_parser * parser){
 void 
 parse_addr_byte(struct req_parser * parser, uint8_t to_parse){
     *(parser->where_to++) = to_parse;
-
     parser->to_parse--;
-    if (parser->to_parse == 0) {
-        parser->to_parse = 2;
-        parser->where_to = (uint8_t *)&(parser->port);
-        parser->state = REQ_DST_PORT;
-    }
+    if (parser->to_parse == 0) { set_dst_port_config(parser); }
 }
 
 void 
@@ -40,7 +35,7 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             LogDebug("[REQ_VER] byte to parse %d\n", to_parse);
             if(to_parse == SOCKS_VERSION) parser->state = REQ_CMD;
             else{
-                LogDebug("Request has unsupported version.");
+                LogError("Request has unsupported version.");
                 parser->state = REQ_ERROR;
             }
             break;
@@ -60,14 +55,12 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             break;
         case REQ_ATYP:
             LogDebug("[REQ_ATYP] byte to parse %d\n", to_parse);
-            //We need to initialize according to the addrtype
             parser->type = to_parse;
             if(to_parse == IPv4){
                 memset(&(parser->addr.ipv4), 0, sizeof(parser->addr.ipv4));
                 parser->to_parse = IPv4_BYTES;
                 parser->addr.ipv4.sin_family = AF_INET;
                 parser->where_to = (uint8_t *)&(parser->addr.ipv4.sin_addr);
-
                 parser->state = REQ_DST_ADDR;
             }
             else if(to_parse == IPv6){
@@ -79,8 +72,7 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             else if(to_parse == FQDN){
                 parser->where_to = parser->addr.fqdn;
-                parser->to_parse = -2; //TODO: Queda como magic number, es para indicar primer
-                //parseo de FQDN
+                parser->to_parse = FIRST_FQDN_BYTE_PARSE;
                 parser->state = REQ_DST_ADDR;
             }
             else{
@@ -91,26 +83,21 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
         case REQ_DST_ADDR:
             LogDebug("[REQ_DST_ADDR] byte to parse %d\n", to_parse);
 
-            if(parser->type == FQDN && parser->to_parse == -2){
-                // Tengo que leer los octetos exactos, el primero me dice cuantos tiene
-                // Si no tengo nada, paso directo a REQ_DST_PORT
+            if(parser->type == FQDN && parser->to_parse == FIRST_FQDN_BYTE_PARSE){
+                /* Quoted from RFC: 
+                "The first octet of the address field contains the number of 
+                octets of name that follow, there is no terminating NUL octet."
+                */
                 if(to_parse == 0){
                     set_dst_port_config(parser);
                 }
                 else{
-                    //Lo anoto porque si no después ni yo me voy a acordar porque esta así:
-                    // Si hay bytes para parsear, me guardo cuantos son, delimito el final del
-                    // string dado por la cantidad que tengo para leer, y paso a parsearlo
-                    parser->to_parse = to_parse; //Quedo medio trabalengua
+                    parser->to_parse = to_parse;
                     parser->addr.fqdn[parser->to_parse] = 0;
                     parser->state = REQ_DST_ADDR;
                 }
-                // Nota: no vuelve a entrar aca por (a) el state para a ser REQ_DST_PORT,
-                // o (b) "parser->to_parse" pasa a ser un valor > -2 (algo para leer del FQDN);
             }
-            else{
-                parse_addr_byte(parser, to_parse);
-            }
+            else{ parse_addr_byte(parser, to_parse); }
             break;
         case REQ_DST_PORT:
             LogDebug("[REQ_DST_PORT] byte to parse %d\n", to_parse);

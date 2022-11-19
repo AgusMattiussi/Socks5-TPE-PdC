@@ -98,10 +98,10 @@ conn_information(socks_conn_model * connection){
 	// https://stackoverflow.com/questions/9527960/how-do-i-construct-an-iso-8601-datetime-in-c)
 	time_t now;
     time(&now);
-	struct tm tm;
+	struct tm tp; //Slight twak for time zone with respect to S.O.'s answer
     char time_buff[sizeof("2022-11-19T12:00:00Z")];
-	localtime_r(&now, &tm);
-    strftime(time_buff, sizeof(time_buff), "%FT%TZ", &tm);
+	localtime_r(&now, &tp);
+    strftime(time_buff, sizeof(time_buff), "%FT%TZ", &tp);
     // this will work too, if your compiler doesn't support %F or %T:
     //strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
 	
@@ -123,7 +123,13 @@ conn_information(socks_conn_model * connection){
 	}
 	printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%d\t\n", time_buff, username, reg_type, 
 			getIpAddress(&(connection->cli_conn->addr)),
-			getPort(&(connection->cli_conn->addr)), parser->type==FQDN?(char*)parser->addr.fqdn:buff,
+			getPort(&(connection->cli_conn->addr)), 
+			parser->type==FQDN?(char*)parser->addr.fqdn:buff,
 			parser->port, parser->res_parser.state);
 	fflush(stdout);
+}
+
+void
+pass_information(socks_conn_model * connection){
+	//TODO: When dissector is ready, implement function
 }

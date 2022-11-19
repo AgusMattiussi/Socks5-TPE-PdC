@@ -1,5 +1,7 @@
 /*
-*       LOGGER - A simple logger to use for debugging purposes
+*                                   LOGGER.h 
+*
+*       A simple logger to use for debugging purposes
 *       This logger has been designed and used as part of a base project
 *       for the subject "Automata and theory of languages".
 *       
