@@ -9,14 +9,14 @@ void cpapParseByte(cpAuthParser * parser, uint8_t byte) {
     switch (parser->currentState){
         case CPAP_CHECK_AUTH_COMMAND:
             printf("[CPAP_CHECK_AUTH_COMMAND] - %hhx (%c)\n", byte, byte);
-            if(byte == 'x'/* AUTH_COMMAND */)
+            if(byte == '1'/* AUTH_COMMAND */)
                 parser->currentState = CPAP_HAS_DATA;               
             else
                 parser->currentState = CPAP_ERROR;
             break;
         case CPAP_HAS_DATA:
             printf("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte);
-            if(byte == 'd'/* 1 */)  // Deberia haber una sola linea (<password>\n)
+            if(byte == '1'/* 1 */)  // Deberia haber una sola linea (<password>\n)
                 parser->currentState = CPAP_READ_PASSWORD;
             else 
                 parser->currentState = CPAP_ERROR;

@@ -3,12 +3,15 @@ CCFLAGS_FINAL=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -
 CCFLAGS=-Wall -g -pthread
 AS= -fsanitize=address
 SOURCES=$(wildcard src/*.c) $(wildcard src/parsers/*.c) $(wildcard src/socks5/*.c) $(wildcard src/users/*.c) $(wildcard src/controlProtocol/*.c) $(wildcard src/controlProtocol/parsers/*.c) $(wildcard src/mng/*.c) 
+SOURCES_CLI=$(wildcard src/client/*.c)
 BIN_DIR=./bin
 BIN_FILE=./bin/main
+BIN_FILE_CLI=./bin/client
 
 all:
 	mkdir -p $(BIN_DIR)
 	$(CC) $(CCFLAGS) $(SOURCES) -o $(BIN_FILE)
+	$(CC) $(CCFLAGS) $(SOURCES_CLI) -o $(BIN_FILE_CLI)
 chill:
 	mkdir -p $(BIN_DIR)
 	$(CC) $(SOURCES) -o $(BIN_FILE)
@@ -18,4 +21,4 @@ allsan:
 clean:
 	rm -rf $(BIN_DIR)
 
-PHONY: clean all
+PHONY: clean all¨
