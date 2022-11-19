@@ -6,6 +6,7 @@
 #define MAX_DATA_SIZE 256
 
 typedef enum cpCommandCode {
+    CP_NO_COMMAND,
     CP_ADD_USER = 1,        // HAS_DATA = 1
     CP_REM_USER,            // HAS_DATA = 1
     CP_CHANGE_PASS,         // HAS_DATA = 1
@@ -15,15 +16,6 @@ typedef enum cpCommandCode {
     CP_DISSECTOR_OFF,       // HAS_DATA = 0
 } cpCommandCode;
 
-
-typedef struct cpCommand {
-    cpCommandCode code;
-    uint8_t hasData;
-    char data[MAX_DATA_SIZE];
-    int dataSize;
-} cpCommand;
-
-
 typedef enum cpCommandParserState {
     CPCP_COMMAND_CODE,
     CPCP_HAS_DATA,
@@ -31,5 +23,16 @@ typedef enum cpCommandParserState {
     CPCP_DONE,
     CPCP_ERROR
 } cpCommandParserState;
+
+typedef struct cpCommandParser {
+    cpCommandParserState currentState;
+    cpCommandCode code;
+    uint8_t hasData;
+    char data[MAX_DATA_SIZE];
+    int dataSize;
+} cpCommandParser;
+
+
+
 
 #endif
