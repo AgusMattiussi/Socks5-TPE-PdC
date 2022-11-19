@@ -101,7 +101,7 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
                 args->mng_addr = optarg;
                 break;
             case 'N':
-                //change_dissector_state(false);
+                //toggle_dissector(false);
                 break;
             case 'p':
                 args->socks_port = port(optarg);
