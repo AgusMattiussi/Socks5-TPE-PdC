@@ -74,7 +74,7 @@ struct parsers_t{
     struct req_parser * req_parser;
 };
 
-typedef struct socks_conn_model{
+typedef struct socks_conn_model {
 
     struct std_conn_model * cli_conn;
     struct std_conn_model * src_conn;
@@ -100,5 +100,10 @@ typedef struct socks_conn_model{
 struct state_definition * socks5_all_states();
 uint32_t socks_get_buf_size();
 
+void  close_socks_conn(socks_conn_model * connection);
+
+void pass_information(socks_conn_model * connection);
+
+void conn_information(socks_conn_model * connection);
 
 #endif

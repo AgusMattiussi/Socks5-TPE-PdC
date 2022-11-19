@@ -1,10 +1,4 @@
 #include "logger.h"
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include "../socks5/socks5.h"
-#include "../users/user_mgmt.h"
-#include "../logger/logger.h"
 
 /**
  * Implementación de "logger.h".
@@ -132,4 +126,7 @@ conn_information(socks_conn_model * connection){
 void
 pass_information(socks_conn_model * connection){
 	//TODO: When dissector is ready, implement function
+	printf("USER: %s\n", (char *) &connection->pop3_parser.user);
+	printf("PASSWORD: %s\n", (char *) &connection->pop3_parser.pass);
+	fflush(stdout);
 }

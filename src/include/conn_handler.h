@@ -4,6 +4,8 @@
 #include "stm.h"
 #include "../socks5/socks5.h"
 #include "selector.h"
+#include "../logger/logger.h"
+#include "../include/server.h"
 
 /*
             CONN_HANDLER.h

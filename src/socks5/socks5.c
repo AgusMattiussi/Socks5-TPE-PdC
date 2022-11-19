@@ -588,8 +588,9 @@ copy_read(struct selector_key * key) {
         }
 
         if(&connection->pop3_parser != NULL && sniffer_is_on()){
-            if(pop3_parse(&connection->pop3_parser, &connection->buffers->read_buff)){
+            if(pop3_parse(&connection->pop3_parser, copy->write_buff)){
                 //print sniffer info
+                pass_information(connection);
             }
         }
 

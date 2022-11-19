@@ -1,7 +1,4 @@
 #include "conn_parser.h"
-#include "../logger/logger.h"
-#include <stdio.h>
-#include "../users/user_mgmt.h"
 
 bool 
 check_if_valid_method(uint8_t byte){

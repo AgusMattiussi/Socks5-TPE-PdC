@@ -84,6 +84,8 @@ static void pop3_parse_byte(pop3_parser * parser){
                 // TODO: agregar mensaje de error?
                 break;
             }
+            default:
+                break;
         }
     }
 }

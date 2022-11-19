@@ -2,9 +2,13 @@
 #define CONN_PARSER_H
 
 #include <stdint.h>
+#include <stdio.h>
+
 #include "../include/buffer.h"
 #include "../include/selector.h"
 #include "../include/conn_handler.h"
+#include "../logger/logger.h"
+#include "../users/user_mgmt.h"
 
 const static uint8_t SOCKS_VERSION = 0x05;
 

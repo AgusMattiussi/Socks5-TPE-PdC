@@ -1,6 +1,4 @@
 #include "include/conn_handler.h"
-#include "logger/logger.h"
-#include "include/server.h"
 
 void socks_connection_read(struct selector_key * key){
     //Recupero información y le paso al handler de lectura de stm
