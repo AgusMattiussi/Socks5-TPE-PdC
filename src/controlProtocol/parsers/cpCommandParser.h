@@ -2,6 +2,7 @@
 #define CP_COMMAND_PARSER_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #define MAX_DATA_SIZE 256
 
@@ -33,6 +34,7 @@ typedef struct cpCommandParser {
 } cpCommandParser;
 
 
-
+void initCpCommandParser(cpCommandParser * parser);
+cpCommandParserState cpcpParseByte(cpCommandParser * parser, uint8_t byte);
 
 #endif

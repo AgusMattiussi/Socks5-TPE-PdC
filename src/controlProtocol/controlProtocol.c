@@ -8,6 +8,7 @@ static controlProtStmState authWrite(struct selector_key * key);
 static void onDeparture(controlProtStmState state, struct selector_key *key);
 static bool validatePassword(cpAuthParser * authParser);
 static unsigned cpError(struct selector_key * key);
+static controlProtStmState executeRead(struct selector_key * key);
 
 static int validPassword = false;
 
@@ -16,10 +17,6 @@ static const struct state_definition controlProtStateDef[] = {
         .state = CP_HELLO,
         .on_write_ready = helloWrite
     },
-    /* {
-        .state = CP_HELLO_WRITE,
-        .on_write_ready = helloWrite
-    }, */
     {
         .state = CP_AUTH,
         .on_arrival = onArrival,
@@ -29,6 +26,7 @@ static const struct state_definition controlProtStateDef[] = {
     },
     {
         .state = CP_EXECUTE,
+        .on_read_ready = executeRead
     },
     {
         .state = CP_OK,
@@ -82,6 +80,7 @@ controlProtConn * newControlProtConn(int fd){
         }
         //TODO: Cambiar esto al onArrival?
         initCpAuthParser(&new->authParser);
+        initCpCommandParser(&new->commandParser);
         buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
@@ -227,6 +226,7 @@ static controlProtStmState authRead(struct selector_key * key){
         }
     }
 
+    //TODO: Puede ser innecesario
     if(parserState == CPAP_ERROR){
         //TODO: Manejar error
         printf("[AUTH/authRead] Error: CPAP_ERROR\n");
@@ -289,11 +289,13 @@ static controlProtStmState authWrite(struct selector_key * key){
 
 /* Leemos el comando enviado por el usuario */
 static controlProtStmState executeRead(struct selector_key * key){
-    printf("[AUTH] executeRead\n");
+    printf("[EXECUTE] executeRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
+    cpCommandParser * parser =  &cpc->commandParser;
+
 
     if(!buffer_can_read(cpc->readBuffer)){
-        printf("[AUTH/executeRead] Buffer Vacio: !buffer_can_read\n");
+        printf("[EXECUTE/executeRead] Buffer Vacio: !buffer_can_read\n");
         //TODO: Manejar error
         return CP_AUTH;
     }
@@ -302,9 +304,34 @@ static controlProtStmState executeRead(struct selector_key * key){
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
 
     if(bytesLeft <= 0){
-        printf("[AUTH/executeRead] Error: bytesLeft <= 0\n");
+        printf("[EXECUTE/executeRead] Error: bytesLeft <= 0\n");
         //TODO: Manejar
     }
-
     
+    for(int i = 0; i < bytesLeft && parser->currentState != CPCP_DONE; i++){
+        parser->currentState = cpcpParseByte(parser, buffer_read(cpc->readBuffer));
+        
+        if(parser->currentState == CPCP_ERROR){
+            printf("[EXECUTE/executeRead] CPCP_ERROR (en for)\n");
+            //TODO: Manejar error
+            return CP_ERROR;
+        }
+    }
+
+    //TODO: Puede ser innecesario
+    if(parser->currentState == CPCP_ERROR){
+        //TODO: Manejar error
+        printf("[EXECUTE/executeRead] Error: CPAP_ERROR\n");
+        return CP_ERROR;
+    }
+    
+    if(parser->currentState == CPCP_DONE){
+        // TODO: Copiar Comando
+        parser->data[parser->dataSize] = '\0';
+        printf("\n\nCOMANDO: %d - DATA: %s\n\n", parser->code, parser->data);
+        selector_set_interest_key(key, OP_WRITE);
+        initCpCommandParser(parser); // Reinicio el Parser
+    }
+
+    return CP_EXECUTE;
 }

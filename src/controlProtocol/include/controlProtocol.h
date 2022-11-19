@@ -10,6 +10,7 @@
 #include "../../include/stm.h"
 #include "../../include/buffer.h"
 #include "../parsers/cpAuthParser.h"
+#include "../parsers/cpCommandParser.h"
 
 #define BUFFER_SIZE 1024
 #define CONTROL_PROT_VERSION "0.1"
@@ -20,7 +21,6 @@
 
 typedef enum controlProtStmState {
     CP_HELLO,
-    /* CP_HELLO_WRITE, */
     CP_AUTH,
     CP_EXECUTE,
     CP_OK,
@@ -56,6 +56,7 @@ typedef struct controlProtConn {
 
     //TODO: Deberia ser un puntero? (para que se inicialice a demanda)
     cpAuthParser authParser;
+    cpCommandParser commandParser;
 
     //TODO: Deberia ser una lista?
     //struct controlProtConn * nextConn;
@@ -65,5 +66,6 @@ typedef struct controlProtConn {
 controlProtConn * newControlProtConn(int fd);
 void cpWriteHandler(struct selector_key * key);
 void cpReadHandler(struct selector_key * key);
+
 
 #endif
