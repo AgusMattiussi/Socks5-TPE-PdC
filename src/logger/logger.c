@@ -121,8 +121,9 @@ conn_information(socks_conn_model * connection){
 				buff, 
 				parser->type == IPv4 ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN);
 	}
-	printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%d\t", time_buff, username, reg_type, 
+	printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%d\t\n", time_buff, username, reg_type, 
 			getIpAddress(&(connection->cli_conn->addr)),
 			getPort(&(connection->cli_conn->addr)), parser->type==FQDN?(char*)parser->addr.fqdn:buff,
 			parser->port, parser->res_parser.state);
+	fflush(stdout);
 }
