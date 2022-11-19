@@ -51,6 +51,8 @@ close_socks_conn(socks_conn_model * connection) {
         freeaddrinfo(connection->resolved_addr);
     }
 
+    free_curr_user();
+
     buffer_reset(&connection->buffers->read_buff);
     buffer_reset(&connection->buffers->write_buff);
 

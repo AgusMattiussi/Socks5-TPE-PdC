@@ -119,18 +119,15 @@ conn_write(struct selector_key * key){
         return ERROR;
     }
     if(ret_state == AUTH_DONE){ 
-        //TODO: Build process_authentication_request (declared, not built yet)
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
         if(is_authenticated == -1){
             LogError("User does not exist. Exiting.\n");
             return ERROR;
         }
+        set_curr_user((char*)parser->username);
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
-        if(ret_selector != SELECTOR_SUCCESS) return ERROR;
-        
-        
-        //TODO: Maybe move to auth_write method?
+        if(ret_selector != SELECTOR_SUCCESS) return ERROR;        
         size_t n_available;
         uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
         if(n_available < 2){
@@ -476,31 +473,26 @@ req_connect(struct selector_key * key) {
 
 static enum socks_state 
 req_write(struct selector_key * key) {
-    socks_conn_model * conn = (socks_conn_model *)key->data;
-    struct req_parser * parser = conn->parsers->req_parser;
+    socks_conn_model * connection = (socks_conn_model *)key->data;
+    struct req_parser * parser = connection->parsers->req_parser;
 
     size_t count;
-    uint8_t * bufptr = buffer_read_ptr(&conn->buffers->write_buff, &count);
-
-    ssize_t len = send(conn->cli_conn->socket, bufptr, count, MSG_NOSIGNAL);
+    uint8_t * bufptr = buffer_read_ptr(&connection->buffers->write_buff, &count);
+    ssize_t len = send(connection->cli_conn->socket, bufptr, count, MSG_NOSIGNAL);
     if (len == -1) {
         return ERROR;
     }
-    buffer_read_adv(&conn->buffers->write_buff, len);
 
-    if (!buffer_can_read(&conn->buffers->write_buff)) {
-        if (parser->res_parser.state != RES_SUCCESS) {
-            return DONE;
-        }
-        if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ) &&
-            SELECTOR_SUCCESS ==
-                selector_set_interest(key->s, conn->src_conn->socket, OP_READ)) {
-            return COPY;
-        }
-        return ERROR;
+    buffer_read_adv(&connection->buffers->write_buff, len);
+    conn_information(connection);
+    if(buffer_can_read(&connection->buffers->write_buff)){ return REQ_WRITE; }
+    if(parser->res_parser.state != RES_SUCCESS){return DONE; }
+    selector_status selector_ret = selector_set_interest_key(key, OP_READ);
+    if(selector_ret == SELECTOR_SUCCESS){
+        selector_ret = selector_set_interest(key->s, connection->src_conn->socket, OP_READ);
+        return selector_ret == SELECTOR_SUCCESS?COPY:ERROR;
     }
-
-    return REQ_WRITE;
+    return ERROR;
 }
 
 static int

@@ -16,7 +16,10 @@ enum add_user_state{
 };
 
 uint8_t process_authentication_request(char * username, char * password);
-
+char * get_curr_user();
+void set_curr_user(char * username);
+uint8_t get_total_curr_users();
+void free_curr_user();
 enum add_user_state add_user(user_t * user);
 
 #endif
