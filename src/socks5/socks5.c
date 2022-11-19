@@ -1,4 +1,5 @@
 #include "socks5.h"
+#include "../logger/logger.h"
 
 #define BUFFER_DEFAULT_SIZE 4096
 uint32_t buf_size = BUFFER_DEFAULT_SIZE;
@@ -9,7 +10,6 @@ uint32_t socks_get_buf_size() { return buf_size; }
  -----------------------*/
 
 void conn_read_init(const unsigned state, struct selector_key * key){
-    printf("Llego a conn_read_init\n");
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     // TODO: Where to parse input? 
     // Update: We initialize parser when read is set
@@ -29,7 +29,7 @@ static enum socks_state conn_read(struct selector_key * key){
 
     enum conn_state ret_state = conn_parse_full(parser, &connection->buffers->read_buff);
     if(ret_state == CONN_ERROR){
-        fprintf(stderr, "Error while parsing.");
+        LogError("Error while parsing.");
         return ERROR;
     }
     if(ret_state == CONN_DONE){
@@ -40,7 +40,7 @@ static enum socks_state conn_read(struct selector_key * key){
             size_t n_available;
             uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
             if(n_available < 2){
-                fprintf(stdout, "Not enough space to send connection response.");
+                LogError("Not enough space to send connection response.");
                 return ERROR;
             }
             write_ptr[0] = SOCKS_VERSION; write_ptr[1] = parser->auth;
@@ -55,17 +55,16 @@ static enum socks_state conn_read(struct selector_key * key){
 
 static enum socks_state 
 conn_write(struct selector_key * key){
-    printf("Entro a connection write\n");
     socks_conn_model * connection = (socks_conn_model *) key->data;
     // We need to build the write the server response to buffer
     size_t n_available;
     uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &n_available);
     ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, n_available, 0); //TODO: Flags?
     if(n_sent == -1){
-        fprintf(stdout, "Error sending bytes to client socket.");
+        LogError("Error sending bytes to client socket.");
         return ERROR;
     }
-    printf("Mande %d bytes hacia cli\n", n_sent);
+    LogDebug("Mande %d bytes hacia cli\n", n_sent);
     buffer_read_adv(&connection->buffers->write_buff, n_sent);
     // We need to check whether there is something else to send. If so, we keep writing
     if(buffer_can_read(&connection->buffers->write_buff)){
@@ -78,13 +77,13 @@ conn_write(struct selector_key * key){
 
     switch(connection->parsers->connect_parser->auth){
         case NO_AUTH:
-            printf("STM pasa a estado REQ_READ\n");
+            LogDebug("STM pasa a estado REQ_READ\n");
             return REQ_READ;
         case USER_PASS:
-            printf("STM pasa a estado AUTH_READ\n");
+            LogDebug("STM pasa a estado AUTH_READ\n");
             return AUTH_READ;
         case GSSAPI:
-            fprintf(stdout, "GSSAPI is out of this project's scope.");
+            LogDebug("GSSAPI is out of this project's scope.");
             return DONE;
         case NO_METHODS:
             return DONE;
@@ -99,7 +98,6 @@ conn_write(struct selector_key * key){
 
  void auth_read_init(const unsigned state, struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
-    printf("Llego a auth_read_init\n");
     auth_parser_init(connection->parsers->auth_parser);
  }
 
@@ -116,7 +114,7 @@ conn_write(struct selector_key * key){
 
     enum auth_state ret_state = auth_parse_full(parser, &connection->buffers->read_buff);
     if(ret_state == AUTH_ERROR){
-        fprintf(stdout, "Error parsing auth method");
+        LogError("Error parsing auth method");
         return ERROR;
     }
     if(ret_state == AUTH_DONE){ 
@@ -124,7 +122,7 @@ conn_write(struct selector_key * key){
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
         if(is_authenticated == -1){
-            fprintf(stdout, "[SOCKS] User does not exist. Exiting.\n");
+            LogError("User does not exist. Exiting.\n");
             return ERROR;
         }
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
@@ -135,7 +133,7 @@ conn_write(struct selector_key * key){
         size_t n_available;
         uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
         if(n_available < 2){
-            fprintf(stdout, "Not enough space to send connection response.");
+            LogError("Not enough space to send connection response.");
             return ERROR;
         }
         write_ptr[0] = AUTH_VERSION;
@@ -206,7 +204,7 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
         addr_ptr = parser->addr.fqdn;
     }
     else{
-        fprintf(stdout, "Address type not recognized\n");
+        LogError("Address type not recognized\n");
         return -1;
     }  
     size_t space_needed = length + FIXED_RES_BYTES + (parser->type==FQDN);
@@ -300,7 +298,7 @@ req_resolve_thread(void * arg){
     ret = getaddrinfo((char *) connection->parsers->req_parser->addr.fqdn,
                     aux_buff, &aux_hint, &connection->resolved_addr);
     if(ret != 0){
-        fprintf(stdout, "Could not resolve FQDN.");
+        LogError("Could not resolve FQDN.");
         freeaddrinfo(connection->resolved_addr);
         connection->resolved_addr = NULL;
     }
@@ -335,7 +333,7 @@ set_connection(socks_conn_model * connection, struct req_parser * parser, enum r
     else if(type == FQDN){
         struct selector_key * aux_key = malloc(sizeof(*key));
         if (aux_key == NULL) {
-            fprintf(stdout, "Malloc failure for aux_key instantiation\n");
+            LogError("Malloc failure for aux_key instantiation\n");
             return manage_req_error(parser, RES_SOCKS_FAIL, connection, key);
         }
         memcpy(aux_key, key, sizeof(*key));
@@ -350,7 +348,7 @@ set_connection(socks_conn_model * connection, struct req_parser * parser, enum r
         return REQ_RESOLVE;
     }
     else{
-        fprintf(stdout, "Unknown connection type\n");
+        LogError("Unknown connection type\n");
         return ERROR;
     }
     return init_connection(parser, connection, key);
@@ -382,7 +380,7 @@ req_read(struct selector_key * key) {
             case REQ_CMD_NONE:
                 return DONE; //TODO: Y que hago acá, termina nomas no?
             default:
-                fprintf(stdout, "Unknown request command type\n");
+                LogError("Unknown request command type\n");
                 return ERROR;
         }
     }
@@ -450,7 +448,6 @@ req_connect(struct selector_key * key) {
     if(getsockopt_ret == 0){
         if(optval != 0){
             if (parser->type == FQDN) {
-                printf("Paso por el selector unregister!!!\n");
                 connection->guardian = true;
                 selector_unregister_fd(key->s, connection->src_conn->socket);
                 connection->guardian = false;
@@ -521,7 +518,7 @@ init_copy_structure(socks_conn_model * connection, struct copy_model_t * copy,
         copy->other = &connection->cli_copy;
     }
     else{
-        fprintf(stdout, "Error initializng copy structures\n");
+        LogError("Error initializng copy structures\n");
         return -1;
     }
     copy->interests = OP_READ;
@@ -541,7 +538,7 @@ copy_init(unsigned state, struct selector_key * key) {
     copy = &connection->src_copy;
     init_ret = init_copy_structure(connection, copy, 1);
     if(init_ret == -1){
-        fprintf(stdout, "Error initializng copy structures\n");
+        LogError("Error initializng copy structures\n");
         //return ERROR;
     }
 }
@@ -559,7 +556,7 @@ copy_read(struct selector_key * key) {
     struct copy_model_t * copy = get_copy(key->fd, connection->cli_conn->socket, 
                                     connection->src_conn->socket, connection);
     if(copy == NULL){
-        fprintf(stdout, "Copy is null\n");
+        LogError("Copy is null\n");
         return ERROR;
     }
 
@@ -606,7 +603,7 @@ copy_write(struct selector_key * key) {
     struct copy_model_t * copy = get_copy(key->fd, connection->cli_conn->socket, 
                                     connection->src_conn->socket, connection);
     if(copy == NULL){
-        fprintf(stdout, "Copy is null\n");
+        LogError("Copy is null\n");
         return ERROR;
     }
 

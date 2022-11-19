@@ -31,6 +31,7 @@
 #include "include/args.h"
 #include "include/server.h"
 #include "include/stm.h"
+#include "logger/logger.h"
 
 //TODO: #include "socks5nio.h"
 
@@ -47,7 +48,7 @@ static bool done = false;
 
 static void
 sigterm_handler(const int signal) {
-    printf("signal %s, cleaning up and exiting\n", "SIGINT");
+    LogDebug("Exiting...");
     done = true;
     cleanup();
     exit(0);
