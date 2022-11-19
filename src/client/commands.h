@@ -34,8 +34,8 @@ int admin_auth(int fd, char * buf);
 char add_user(char *username, char * pass, int fd);
 char delete_user(char * username, int fd);
 char edit_password(char * pass, int fd);
-void list_users(int fd);
-void obtain_metrics(int fd);
+char list_users(int fd);
+char obtain_metrics(int fd);
 char dissector_on(int fd);
 char dissector_off(int fd);
 

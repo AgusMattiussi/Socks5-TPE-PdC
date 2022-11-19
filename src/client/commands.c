@@ -5,7 +5,8 @@ char parse_users_message(int fd) {
 
     uint8_t response_buf[MAXLEN];
 
-    size_t byte_n;
+    //FIXME: Estaba sin inicializar
+    size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
     if((char)response_buf[0] == FAILURE) {
@@ -30,7 +31,8 @@ char parse_metrics_message(int fd) {
 
     uint8_t response_buf[MAXLEN];
 
-    size_t byte_n;
+    //FIXME: Estaba sin inicializar
+    size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
     if((char)response_buf[0] == FAILURE) {
@@ -50,7 +52,8 @@ char parse_metrics_message(int fd) {
 char receive_simple_response(int fd) {
     char response_buf[MAXLEN];
 
-    size_t byte_n;
+    //FIXME: Estaba sin inicializar
+    size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
     printf("buf: %s\n", response_buf);
@@ -137,7 +140,7 @@ char edit_password(char * pass, int fd) {
     return receive_simple_response(fd);
 }
 
-void list_users(int fd) {
+char list_users(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_LIST_USERS;
     to_send[1] = NO_DATA;
@@ -146,7 +149,7 @@ void list_users(int fd) {
     return parse_users_message(fd);
 }
 
-void obtain_metrics(int fd) {
+char obtain_metrics(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_OBTAIN_METRICS;
     to_send[1] = NO_DATA;

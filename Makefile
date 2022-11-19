@@ -21,4 +21,4 @@ allsan:
 clean:
 	rm -rf $(BIN_DIR)
 
-PHONY: clean all¨
+PHONY: clean all
