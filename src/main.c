@@ -32,6 +32,7 @@
 #include "include/server.h"
 #include "include/stm.h"
 #include "logger/logger.h"
+#include "include/metrics.h"
 
 //TODO: #include "socks5nio.h"
 
@@ -63,7 +64,7 @@ main(const int argc, char **argv) {
 
     struct socks5args args;
     parse_args(argc, argv, &args);
-
+    start_metrics();
     int returnCode = start_server(args.socks_addr, args.socks_port);
 
     return returnCode;

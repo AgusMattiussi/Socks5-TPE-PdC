@@ -4,18 +4,22 @@
 
 #define MAX_USERS 10
 
-//TODO: Array o listas? Para charlar
 static user_t * users[MAX_USERS];
 
 uint8_t n_users = 0;
+bool require_auth;
 
-bool valid_credentials(char * username, char * password, char * user2, char * pass2){
+void
+init_auth_mgmt(){ require_auth = false; n_users = 0; }
+
+bool 
+valid_credentials(char * username, char * password, char * user2, char * pass2){
     return strcmp(username, user2) == 0 && strcmp(password, pass2) == 0;
 }
 
-uint8_t process_authentication_request(char * username, char * password){
-    //TODO: Discutir si poner en un 3er parametro un User para que devuelva las credenciales,
-    //  o también setear como "currentUser"
+uint8_t 
+process_authentication_request(char * username, char * password){
+    if(!require_auth) return 0; // Que necesidad de chequear si igual no necesita auth.
     for(int i = 0; i < n_users; i++){
         if(valid_credentials(username, password, users[i]->name, users[i]->pass)){
             return 0;
@@ -24,15 +28,24 @@ uint8_t process_authentication_request(char * username, char * password){
     return -1;
 }
 
+uint8_t
+user_exists(char * username, char * password){
+    for(int i = 0; i < n_users; i++){
+        if(valid_credentials(username, password, users[i]->name, users[i]->pass)){
+            return 0;
+        }
+    }
+    return -1;
+}
 
-
-enum add_user_state add_user(user_t * user){
+enum add_user_state 
+add_user(user_t * user){
     if(n_users == MAX_USERS){
         fprintf(stdout, "Alcanzaste un máximo de usuarios.\n");
         free(user);
         return ADD_MAX_USERS;
     }
-    if(process_authentication_request(user->name, user->pass) == 0){
+    if(user_exists(user->name, user->pass) == 0){
         fprintf(stdout, "Usuario ya existe.\n");
         free(user);
         return ADD_USER_EXISTS;
@@ -52,5 +65,6 @@ enum add_user_state add_user(user_t * user){
     strcpy(users[n_users]->name, user->name);
     strcpy(users[n_users]->pass, user->pass);
     n_users++;
+    require_auth = true;
     return ADD_OK;
 }

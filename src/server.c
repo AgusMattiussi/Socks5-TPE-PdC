@@ -1,17 +1,20 @@
 #include "include/server.h"
 #include "logger/logger.h"
+#include "include/metrics.h"
 
 #define INITIAL_N 20
 #define MAX_QUEUE 50
 #define BUFF_SIZE 2048
 
-//TODO (General): Set error codes in all goto finally calls.
+static fd_selector selector;
 
 static void passive_socks_socket_handler(struct selector_key * key);
 
-static fd_selector selector;
-
-const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
+const struct fd_handler passive_socket_fd_handler = {
+    .handle_read = passive_socks_socket_handler, 
+    .handle_write = 0, 
+    .handle_block = 0, 
+    .handle_close = 0};
 
 const struct fd_handler connection_actions_handler = { 
     .handle_read = socks_connection_read,
@@ -40,6 +43,7 @@ close_socks_conn(socks_conn_model * connection) {
         close(server_socket);
     }
     if (client_socket != -1) {
+        remove_current_socks_connection();    
         selector_unregister_fd(selector, client_socket);
         close(client_socket);
     }
@@ -120,6 +124,7 @@ static void passive_socks_socket_handler(struct selector_key * key){
         close_socks_conn(connection);
         return;
     }
+    add_socks_connection();
 }
 
 static int start_socket(char * port, char * addr, 
@@ -199,14 +204,12 @@ finally:
 
 }
 
-static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
+//static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
 
 
 int start_server(char * socks_addr, char * socks_port){
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1;
     int ret_code = -1;
-
-    signal(SIGCHLD, network_selector_signal_handler);
 
     //Initialization of selector struct
     struct timespec select_timeout = {0};

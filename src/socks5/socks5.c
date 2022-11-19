@@ -1,5 +1,6 @@
 #include "socks5.h"
 #include "../logger/logger.h"
+#include "../include/metrics.h"
 
 #define BUFFER_DEFAULT_SIZE 4096
 uint32_t buf_size = BUFFER_DEFAULT_SIZE;
@@ -610,11 +611,15 @@ copy_write(struct selector_key * key) {
     size_t n_bytes;
     uint8_t * buff_ptr = buffer_read_ptr(copy->read_buff, &n_bytes);
     ssize_t bytes_sent = send(key->fd, buff_ptr, n_bytes, MSG_NOSIGNAL);
+
     if (bytes_sent == -1){ return (errno == EWOULDBLOCK || errno == EAGAIN)?COPY:ERROR; }
+
     buffer_read_adv(copy->read_buff, bytes_sent);
+    add_bytes_transferred((long)bytes_sent);
     copy->other->interests = copy->other->interests | OP_READ;
     copy->other->interests = copy->other->interests & copy->other->connection_interests;
     selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture return?
+
     if (!buffer_can_read(copy->read_buff)) {
         copy->interests &= ~OP_WRITE;
         copy->interests &= copy->connection_interests;
@@ -627,7 +632,9 @@ copy_write(struct selector_key * key) {
 }
 
 static void 
-req_connect_init(){printf("Estoy en estado REQ CONNECT\n");}
+req_connect_init(){
+//    printf("Estoy en estado REQ CONNECT\n");
+}
 
 static const struct state_definition states[] = {
     /*{

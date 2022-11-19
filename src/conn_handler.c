@@ -14,7 +14,7 @@ void socks_connection_read(struct selector_key * key){
     }
     else if(state == DONE){
         //For debugging purposes
-        LogError("STM is DONE");
+        LogDebug("STM is DONE");
         close_socks_conn(connection);
     }
 }
@@ -28,7 +28,7 @@ void socks_connection_write(struct selector_key * key){
         close_socks_conn(connection);
     }
     else if(state == DONE){
-        LogError("STM is DONE");
+        LogDebug("STM is DONE");
         close_socks_conn(connection);
     }
 }
@@ -42,7 +42,7 @@ void socks_connection_block(struct selector_key * key){
         close_socks_conn(connection);
     }
     else if(state == DONE){
-        LogInfo("STM is DONE");
+        LogDebug("STM is DONE");
         close_socks_conn(connection);
     }
 }
