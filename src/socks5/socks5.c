@@ -534,7 +534,10 @@ copy_init(unsigned state, struct selector_key * key) {
     }
 
     if(sniffer_is_on()){
-        pop3_parser_init(&connection->pop3_parser);     
+        connection->pop3_parser = malloc(sizeof(pop3_parser));
+        pop3_parser_init(connection->pop3_parser); 
+        if(connection->pop3_parser == NULL)
+            printf("QUILOMBO\n");    
     }
 }
 
@@ -564,6 +567,18 @@ copy_read(struct selector_key * key) {
             copy->other->interests = copy->other->interests | OP_WRITE;
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
             selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture wrong set?
+
+            if(connection->pop3_parser != NULL && sniffer_is_on()){
+                if(pop3_parse(connection->pop3_parser, copy->write_buff) == POP3_DONE){
+                    printf("\nParseo exitoso...\n");
+                    printf("-----------------\n");
+                    printf("USER: %s\n", connection->pop3_parser->user);
+                    printf("PASS: %s\n", connection->pop3_parser->pass);
+                    //TODO: loggin function to print pop3 info
+                    //pass_information(connection);
+                }
+            }
+
             return COPY;
         }
         
@@ -585,13 +600,6 @@ copy_read(struct selector_key * key) {
             copy->other->interests &= copy->other->connection_interests;
             selector_set_interest(key->s, copy->other->fd, copy->other->interests);
             shutdown(copy->other->fd, SHUT_WR);
-        }
-
-        if(&connection->pop3_parser != NULL && sniffer_is_on()){
-            if(pop3_parse(&connection->pop3_parser, copy->write_buff)){
-                //print sniffer info
-                pass_information(connection);
-            }
         }
 
 

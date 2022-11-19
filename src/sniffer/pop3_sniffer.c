@@ -5,6 +5,10 @@ static const char * pop3_user_cmd = "USER ";
 static const char * pop3_pass_cmd = "PASS ";
 
 
+static pop3_state handle_error(pop3_parser * parser, uint8_t c) {
+    return parser->user_done? POP3_PASS_CMD : POP3_USER_CMD;
+}
+
 static pop3_state parse_user_cmd(pop3_parser * parser, uint8_t c){
     if(toupper(c) == pop3_user_cmd[parser->read_ptr]){
         parser->read_ptr++;
@@ -15,7 +19,7 @@ static pop3_state parse_user_cmd(pop3_parser * parser, uint8_t c){
         // tengo que seguir parseando el comando para ver si es "USER "
         return POP3_USER_CMD;
     }
-    return POP3_ERROR;
+    return handle_error(parser, c);
 }
 
 static pop3_state parse_user(pop3_parser * parser, uint8_t c){
@@ -25,6 +29,7 @@ static pop3_state parse_user(pop3_parser * parser, uint8_t c){
     if(c == '\n'){
         parser->user[parser->write_ptr++] = '\0';
         parser->write_ptr = 0;
+        parser->user_done = true;
         return POP3_PASS_CMD;
     }
 
@@ -41,7 +46,7 @@ static pop3_state parse_pass_cmd(pop3_parser * parser, uint8_t c){
         }
         return POP3_PASS_CMD;
     }
-    return POP3_ERROR;
+    return handle_error(parser, c);
 }
 
 static pop3_state parse_pass(pop3_parser * parser, uint8_t c){
@@ -60,9 +65,8 @@ static pop3_state parse_pass(pop3_parser * parser, uint8_t c){
 
 static void pop3_parse_byte(pop3_parser * parser){
     while(buffer_can_read(&parser->buff) && parser->state != POP3_DONE){
-        
         uint8_t c = buffer_read(&parser->buff);
-
+        
         switch (parser->state){
             case POP3_USER_CMD: {
                 parser->state = parse_user_cmd(parser, c);
@@ -81,7 +85,7 @@ static void pop3_parse_byte(pop3_parser * parser){
                 break;
             }
             case POP3_ERROR: {
-                // TODO: agregar mensaje de error?
+                parser->state = handle_error(parser, c);
                 break;
             }
             default:
@@ -91,10 +95,10 @@ static void pop3_parse_byte(pop3_parser * parser){
 }
 
 void pop3_parser_init(pop3_parser * parser){
-    parser = malloc(sizeof(pop3_parser));
     parser->state = POP3_USER_CMD;
     parser->read_ptr = 0;
     parser->write_ptr = 0;
+    parser->user_done = false;
 }
 
 pop3_state pop3_parse(pop3_parser * parser, buffer * buff){

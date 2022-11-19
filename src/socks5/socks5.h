@@ -88,7 +88,7 @@ typedef struct socks_conn_model {
 
     struct state_machine stm;
 
-    struct pop3_parser pop3_parser;
+    struct pop3_parser * pop3_parser;
 
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;

@@ -126,7 +126,4 @@ conn_information(socks_conn_model * connection){
 void
 pass_information(socks_conn_model * connection){
 	//TODO: When dissector is ready, implement function
-	printf("USER: %s\n", (char *) &connection->pop3_parser.user);
-	printf("PASSWORD: %s\n", (char *) &connection->pop3_parser.pass);
-	fflush(stdout);
 }

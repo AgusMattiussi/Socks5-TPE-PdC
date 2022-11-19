@@ -2,6 +2,7 @@
 #define POP3_SNIFFER_H
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -73,6 +74,7 @@ typedef struct pop3_parser {
     uint8_t pass[ARGUMENT_LENGTH];
     uint16_t read_ptr;
     uint16_t write_ptr;
+    bool user_done;
 } pop3_parser;
 
 void pop3_parser_init(pop3_parser * parser);
