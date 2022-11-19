@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define MAX_DATA_SIZE 256
+#define MAX_DATA_SIZE 255
 
 typedef enum cpCommandCode {
     CP_NO_COMMAND,
-    CP_ADD_USER = 1,        // HAS_DATA = 1
+    CP_ADD_USER = '1',      // HAS_DATA = 1
     CP_REM_USER,            // HAS_DATA = 1
     CP_CHANGE_PASS,         // HAS_DATA = 1
     CP_LIST_USERS,          // HAS_DATA = 0
@@ -29,7 +29,7 @@ typedef struct cpCommandParser {
     cpCommandParserState currentState;
     cpCommandCode code;
     uint8_t hasData;
-    char data[MAX_DATA_SIZE];
+    char data[MAX_DATA_SIZE + 1];   // Cerramos el string con '\0'
     int dataSize;
 } cpCommandParser;
 
