@@ -39,11 +39,6 @@
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
 
-/* struct fdStruct {
-    int fd;
-}; */
-
-
 void socksv5_passive_accept(struct selector_key * key);
 static bool done = false;
 
@@ -68,4 +63,5 @@ main(const int argc, char **argv) {
     int returnCode = start_server(args.socks_addr, args.socks_port);
 
     return returnCode;
+
 }

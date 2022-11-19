@@ -20,7 +20,10 @@
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
 #include "../parsers/req_parser.h"
-#include "../users/user_mgmt.h" 
+#include "../users/user_mgmt.h"
+#include "../logger/logger.h"
+#include "../include/metrics.h"
+#include "../sniffer/pop3_sniffer.h"
 
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
@@ -84,7 +87,8 @@ typedef struct socks_conn_model{
     struct addrinfo * curr_addr;
 
     struct state_machine stm;
-    // POP3?
+
+    struct pop3_parser pop3_parser;
 
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;

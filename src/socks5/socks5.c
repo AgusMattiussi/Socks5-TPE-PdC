@@ -1,6 +1,4 @@
 #include "socks5.h"
-#include "../logger/logger.h"
-#include "../include/metrics.h"
 
 #define BUFFER_DEFAULT_SIZE 4096
 uint32_t buf_size = BUFFER_DEFAULT_SIZE;
@@ -542,6 +540,10 @@ copy_init(unsigned state, struct selector_key * key) {
         LogError("Error initializng copy structures\n");
         //return ERROR;
     }
+
+    if(sniffer_is_on()){
+        pop3_parser_init(&connection->pop3_parser);     
+    }
 }
 
 static struct copy_model_t *
@@ -572,7 +574,11 @@ copy_read(struct selector_key * key) {
             selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture wrong set?
             return COPY;
         }
-        if(errno == EAGAIN || errno == EWOULDBLOCK){ return COPY; }
+        
+        if(errno == EAGAIN || errno == EWOULDBLOCK){ 
+            return COPY; 
+        }
+
         copy->connection_interests = copy->connection_interests & ~OP_READ;
         copy->interests = copy->interests & copy->connection_interests;
         selector_set_interest(key->s, copy->fd, copy->interests); //TODO: Capture selector error?
@@ -582,11 +588,20 @@ copy_read(struct selector_key * key) {
         // and (from top answer) man -s 2 shutdown
         shutdown(copy->fd, SHUT_RD);
         copy->other->connection_interests &= ~OP_WRITE;
+        
         if(!buffer_can_read(copy->write_buff)){
             copy->other->interests &= copy->other->connection_interests;
             selector_set_interest(key->s, copy->other->fd, copy->other->interests);
             shutdown(copy->other->fd, SHUT_WR);
         }
+
+        if(&connection->pop3_parser != NULL && sniffer_is_on()){
+            if(pop3_parse(&connection->pop3_parser, &connection->buffers->read_buff)){
+                //print sniffer info
+            }
+        }
+
+
         return copy->connection_interests == OP_NOOP?
                 (copy->other->connection_interests == OP_NOOP?
                 DONE:COPY):COPY;

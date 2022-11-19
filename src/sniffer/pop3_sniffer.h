@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include "../include/buffer.h"
 
@@ -57,12 +58,12 @@ octets, including the terminating CRLF.
 
 typedef enum pop3_state {
     //GREETING,
-    USER_CMD,
-    USER,
-    PASS_CMD,
-    PASS,
-    ERROR,
-    DONE
+    POP3_USER_CMD,
+    POP3_USER,
+    POP3_PASS_CMD,
+    POP3_PASS,
+    POP3_ERROR,
+    POP3_DONE
 } pop3_state;
 
 typedef struct pop3_parser {
