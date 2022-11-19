@@ -38,6 +38,7 @@
 
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
+#define INITIAL_N 20
 
 /* struct fdStruct {
     int fd;
@@ -55,8 +56,31 @@ sigterm_handler(const int signal) {
     exit(0);
 }
 
+static void
+start_selector(){
+    // Initialization of selector struct
+    struct timespec select_timeout = {0};
+    select_timeout.tv_sec = 100;
+    struct selector_init select_init_struct = {SIGCHLD, select_timeout};
+
+    // Configure the selector
+    int selector_init_retvalue = -1;
+    selector_init_retvalue = selector_init(&select_init_struct);
+    if(selector_init_retvalue != SELECTOR_SUCCESS){
+        LogError("Selector initialization failed: %s",
+        selector_error(selector_init_retvalue));
+    }  
+
+    // Initialize the selector
+    fd_selector selector = selector_new(INITIAL_N);
+    set_selector(&selector);
+    if(selector == NULL){
+        LogError("Selector creation failed");
+    }
+}
+
 int
-main(const int argc, char **argv) {
+main(const int argc, char ** argv) {
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT, sigterm_handler);
 
@@ -65,7 +89,8 @@ main(const int argc, char **argv) {
     struct socks5args args;
     parse_args(argc, argv, &args);
     start_metrics();
-    int returnCode = start_server(args.socks_addr, args.socks_port);
+    start_selector();
+    start_server(args.socks_addr, args.socks_port);
 
-    return returnCode;
+    return 0;
 }
