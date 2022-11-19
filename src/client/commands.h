@@ -25,6 +25,8 @@
 #define COMMAND_DISSECTOR_ON '7'
 #define COMMAND_DISSECTOR_OFF '8'
 #define COMMAND_CANT 8
+#define NO_DATA 0
+#define HAS_DATA 1
 #define MAXLEN 1024
 
 void help() ;

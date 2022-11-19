@@ -53,6 +53,8 @@ char receive_simple_response(int fd) {
     size_t byte_n;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
+    printf("buf: %s\n", response_buf);
+
     if(response_buf[0] == FAILURE) {
         if(response_buf[1] != SUCCESS)
             return '0';
@@ -79,15 +81,13 @@ int admin_auth(int fd, char * buf) {
 
     buf[strlen(buf)-1] = '\0';
 
-    size_t len = strlen(buf) + 2;
-    uint8_t message[len];
+    size_t len = strlen(buf) + 3;
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_AUTH;
-    to_send[1] = '1';
+    to_send[1] = HAS_DATA;
     strcat(to_send, buf);
-    to_send[len] = '\n';
-    //memcpy(&message[2], to_send, len-2);
-    send(fd, to_send, len+1, 0);
+    to_send[len-1] = '\n';
+    send(fd, to_send, len, 0);
 
     char ret = receive_simple_response(fd);
 
@@ -101,40 +101,37 @@ char add_user(char *username, char * pass, int fd) {
     /*user * new_user = malloc(sizeof(struct user));
     new_user->username = username;
     new_user->password = pass;*/
-    size_t len = strlen(username) + strlen(pass) + 3;
-    uint8_t message[len];
+    size_t len = strlen(username) + strlen(pass) + 4;
     char to_send[MAXLEN] = {0};
-    message[0] = (uint8_t)COMMAND_ADD_USER;
-    message[1] = (uint8_t)(len-2);
+    to_send[0] = COMMAND_ADD_USER;
+    to_send[1] = HAS_DATA;
     strcat(to_send, username);
     strcat(to_send, ":");
     strcat(to_send, pass);
-    memcpy(&message[2], to_send, len-2);
-    send(fd, message, len, 0);
+    to_send[len-1] = '\n';
+    send(fd, to_send, len, 0);
     return receive_simple_response(fd);
 }
 
 char delete_user(char * username, int fd) {
     size_t len = strlen(username) + 3;
-    uint8_t message[len];
     char to_send[MAXLEN] = {0};
-    message[0] = (uint8_t)COMMAND_DELETE_USER;
-    message[1] = (uint8_t)(len-2);
+    to_send[0] = COMMAND_DELETE_USER;
+    to_send[1] = HAS_DATA;
     strcat(to_send, username);
-    memcpy(&message[2], to_send, len-2);
-    send(fd, message, len, 0);
+    to_send[len-1] = '\n';
+    send(fd, to_send, len, 0);
 
     return receive_simple_response(fd);
 }
 
 char edit_password(char * pass, int fd) {
     size_t len = strlen(pass) + 3;
-    uint8_t message[len];
     char to_send[MAXLEN] = {0};
-    message[0] = (uint8_t)COMMAND_EDIT_PASSWORD;
-    message[1] = (uint8_t)(len-2);
+    to_send[0] = COMMAND_EDIT_PASSWORD;
+    to_send[1] = HAS_DATA;
     strcat(to_send, pass);
-    memcpy(&message[2], to_send, len-2);
+    to_send[len-1] = '\n';
     send(fd, to_send, len, 0);
 
     return receive_simple_response(fd);
@@ -143,7 +140,8 @@ char edit_password(char * pass, int fd) {
 void list_users(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_LIST_USERS;
-    send(fd, to_send, 1, 0);
+    to_send[1] = NO_DATA;
+    send(fd, to_send, 2, 0);
 
     return parse_users_message(fd);
 }
@@ -151,14 +149,16 @@ void list_users(int fd) {
 void obtain_metrics(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_OBTAIN_METRICS;
-    send(fd, to_send, 1, 0);
+    to_send[1] = NO_DATA;
+    send(fd, to_send, 2, 0);
     return parse_metrics_message(fd);
 }
 
 char dissector_on(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_DISSECTOR_ON;
-    send(fd, to_send, 1, 0);
+    to_send[1] = NO_DATA;
+    send(fd, to_send, 2, 0);
 
     return receive_simple_response(fd);
 }
@@ -166,7 +166,8 @@ char dissector_on(int fd) {
 char dissector_off(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_DISSECTOR_OFF;
-    send(fd, to_send, 1, 0);
+    to_send[1] = NO_DATA;
+    send(fd, to_send, 2, 0);
 
     return receive_simple_response(fd);
 }
