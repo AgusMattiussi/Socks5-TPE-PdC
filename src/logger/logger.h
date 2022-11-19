@@ -14,6 +14,9 @@
 
 #include <stdio.h>
 
+void setLogOn();
+void setLogOff();
+
 void Log(FILE * const stream, const char * prefix, const char * const format, const char * suffix, va_list arguments);
 
 void LogDebug(const char * const format, ...);

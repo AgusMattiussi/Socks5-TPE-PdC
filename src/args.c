@@ -7,6 +7,8 @@
 #include <stdlib.h>
 
 #include "include/args.h"
+#include "logger/logger.h"
+#include "users/user_mgmt.h"
 
 static char * port(char * s) {
     char * end = 0;
@@ -57,6 +59,9 @@ usage(const char *progname) {
         "   -P <conf port>   Puerto entrante conexiones configuracion\n"
         "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
         "   -v               Imprime información sobre la versión versión y termina.\n"
+        "   -m               Activa la opción de debugger.\n"
+        "   -n               Desactiva la opción de debugger.\n"
+        
         "\n"
         "   --doh-ip    <ip>    \n"
         "   --doh-port  <port>  XXX\n"
@@ -82,7 +87,7 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
 
     int c;
     while (true) {
-        c = getopt(argc, argv, "hl:L:Np:P:U:u:v");
+        c = getopt(argc, argv, "hl:L:Np:P:U:u:vmn");
         if (c == -1)
             break;
         switch (c) {
@@ -118,6 +123,12 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
             case 'v':
                 version();
                 goto finally;
+            case 'm':
+                setLogOn();
+                break;
+            case 'n':
+                setLogOff();
+                break;
             default:
                 fprintf(stderr, "unknown argument %d.\n", c);
                 ret_code = 1;
