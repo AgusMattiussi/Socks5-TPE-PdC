@@ -6,18 +6,22 @@
 #include <sys/types.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "../../include/stm.h"
 #include "../../include/buffer.h"
 #include "../parsers/cpAuthParser.h"
 #include "../parsers/cpCommandParser.h"
+#include "cpCommands.h"
 
 #define BUFFER_SIZE 1024
-#define CONTROL_PROT_VERSION "0.1"
+#define HELLO_LEN 10
 
+#define CONTROL_PROT_VERSION "0.1"
 #define ADMIN_PASSWORD "pass1234"
 
-#define HELLO_LEN 10
+#define TOKEN_DELIMITER ";"
+#define LINE_DELIMITER "\n"
 
 typedef enum controlProtStmState {
     CP_HELLO,
@@ -33,7 +37,9 @@ typedef enum controlProtStatus{
 } controlProtStatus;
 
 typedef enum controlProtErrorCode{
-    CPERROR_INVALID_PASSWORD
+    CPERROR_INVALID_PASSWORD,
+    CPERROR_COMMAND_NEEDS_DATA,
+    CPERROR_INVALID_FORMAT
 } controlProtErrorCode;
 
 

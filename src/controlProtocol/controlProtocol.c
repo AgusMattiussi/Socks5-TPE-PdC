@@ -9,6 +9,7 @@ static void onDeparture(controlProtStmState state, struct selector_key *key);
 static bool validatePassword(cpAuthParser * authParser);
 static unsigned cpError(struct selector_key * key);
 static controlProtStmState executeRead(struct selector_key * key);
+static controlProtStmState executeWrite(struct selector_key * key);
 
 static int validPassword = false;
 
@@ -26,7 +27,8 @@ static const struct state_definition controlProtStateDef[] = {
     },
     {
         .state = CP_EXECUTE,
-        .on_read_ready = executeRead
+        .on_read_ready = executeRead,
+        .on_write_ready = executeWrite
     },
     {
         .state = CP_OK,
@@ -242,7 +244,7 @@ static controlProtStmState authRead(struct selector_key * key){
     return CP_AUTH;
 }
 
-/* Le envia al usuario la respuesta a su autenticacion */
+/* Le envia al cliente la respuesta a su autenticacion */
 static controlProtStmState authWrite(struct selector_key * key){
     printf("[AUTH] authWrite\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
@@ -330,8 +332,65 @@ static controlProtStmState executeRead(struct selector_key * key){
         parser->data[parser->dataSize] = '\0';
         printf("\n\nCOMANDO: %d - DATA: %s\n\n", parser->code, parser->data);
         selector_set_interest_key(key, OP_WRITE);
-        initCpCommandParser(parser); // Reinicio el Parser
+        //initCpCommandParser(parser); // Reinicio el Parser
     }
 
     return CP_EXECUTE;
 }
+
+/* Le enviamos al cliente la respuesta a su comando */
+
+static controlProtStmState executeWrite(struct selector_key * key){
+    printf("[EXECUTE] executeWrite\n");
+    controlProtConn * cpc = (controlProtConn *) key->data;
+    cpCommandParser * parser =  &cpc->commandParser;
+    char * answer = NULL;
+
+    // TODO: Cambiar por array de punteros a funcion?
+    switch (parser->code){
+        case CP_ADD_USER:
+            addProxyUser(parser, answer);
+            break;
+        case CP_REM_USER:
+            /* code */
+            break;
+        case CP_CHANGE_PASS:
+            /* code */
+            break;
+        case CP_LIST_USERS:
+            /* code */
+            break;
+        case CP_GET_METRICS:
+            /* code */
+            break;
+        case CP_DISSECTOR_ON:
+            /* code */
+            break;
+        case CP_DISSECTOR_OFF:
+            /* code */
+            break;
+        default:
+            break;
+    }
+
+    size_t maxWrite;
+    uint8_t * writePtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
+
+    int ansSize = strlen(answer);
+    if(ansSize > maxWrite){
+        //TODO: Buffer lleno. Manejar error
+        return CP_ERROR;
+    }
+
+    memcpy(writePtr, answer, ansSize);
+    buffer_write_adv(cpc->writeBuffer, ansSize);
+
+    cpc->interests |= OP_READ;
+    selector_set_interest_key(key, cpc->interests);
+
+    free(answer);
+    initCpCommandParser(parser);
+
+    return CP_EXECUTE;
+}
+
