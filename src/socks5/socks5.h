@@ -58,7 +58,8 @@ struct buffers_t{
 
 struct copy_model_t{
     int fd;
-    struct buffers_t * buffers;
+    buffer * read_buff;
+    buffer * write_buff;
     fd_interest interests;
     fd_interest connection_interests;
     struct copy_model_t * other;
@@ -85,14 +86,14 @@ typedef struct socks_conn_model{
     struct state_machine stm;
     // POP3?
 
-    struct copy_model_t * cli_copy;
-    struct copy_model_t * src_copy;
+    struct copy_model_t cli_copy;
+    struct copy_model_t src_copy;
+    bool guardian;
 
 } socks_conn_model;
 
 struct state_definition * socks5_all_states();
 uint32_t socks_get_buf_size();
 
-void close_socks5_connection(socks_conn_model * connection);
 
 #endif

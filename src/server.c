@@ -1,29 +1,40 @@
 #include "include/server.h"
-
+#include "logger/logger.h"
+#include "include/metrics.h"
 
 #define INITIAL_N 20
 #define MAX_QUEUE 50
 #define BUFF_SIZE 2048
 
-//TODO (General): Set error codes in all goto finally calls.
+static fd_selector selector;
 
 static void passive_socks_socket_handler(struct selector_key * key);
 
-static fd_selector selector;
-
-const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
-//TODO: Should this functions have a &? 
+const struct fd_handler passive_socket_fd_handler = {
+    .handle_read = passive_socks_socket_handler, 
+    .handle_write = 0, 
+    .handle_block = 0, 
+    .handle_close = 0};
 
 const struct fd_handler connection_actions_handler = { 
-    socks_connection_read,socks_connection_write,
-    socks_connection_block,socks_connection_close
+    .handle_read = socks_connection_read,
+    .handle_write = socks_connection_write,
+    .handle_block = socks_connection_block,
+    .handle_close = socks_connection_close
 };
 
-const struct fd_handler * get_conn_actions_handler() {
+const struct fd_handler * 
+get_conn_actions_handler() {
     return &connection_actions_handler;
 }
 
-void close_socks_conn(socks_conn_model * connection) {
+void 
+close_socks_conn(socks_conn_model * connection) {
+    if(connection->guardian){
+        return;
+    }
+    connection->guardian = true;
+
     int client_socket = connection->cli_conn->socket;
     int server_socket = connection->src_conn->socket;
 
@@ -32,10 +43,10 @@ void close_socks_conn(socks_conn_model * connection) {
         close(server_socket);
     }
     if (client_socket != -1) {
+        remove_current_socks_connection();    
         selector_unregister_fd(selector, client_socket);
         close(client_socket);
     }
-
     if (connection->resolved_addr != NULL) {
         freeaddrinfo(connection->resolved_addr);
     }
@@ -50,11 +61,7 @@ void close_socks_conn(socks_conn_model * connection) {
 
 static void passive_socks_socket_handler(struct selector_key * key){
     //TODO: Check if enough fds are available
-    // TODO: Aca hay un error ¿¿¿??? Recibe SIGSEGV pero no entiendo por que,
-    // con el perror anterior verificamos que pasa bien el malloc
-    // Fui probando de cambiar el orden de cierta inicialización de los parametros pero el 
-    // SIGSEGV llega en momentos pseudo aleatorios?
-    printf("Entre al socket handler de conexión entrante...\n");
+
     socks_conn_model * connection = malloc(sizeof(struct socks_conn_model));
     if(connection == NULL) { 
         perror("error:");
@@ -77,91 +84,72 @@ static void passive_socks_socket_handler(struct selector_key * key){
     memset(connection->parsers->auth_parser, 0x00, sizeof(*(connection->parsers->auth_parser)));
     memset(connection->parsers->req_parser, 0x00, sizeof(*(connection->parsers->req_parser)));
 
-
-
-    printf("Inicializo buffers auxiliares\n");
     connection->buffers = malloc(sizeof(struct buffers_t));
     connection->buffers->aux_read_buff = malloc((uint32_t)BUFF_SIZE);
     connection->buffers->aux_write_buff = malloc((uint32_t)BUFF_SIZE);
 
-    printf("Paso mallocs de inicialización de buffers\n");
-
     buffer_init(&connection->buffers->read_buff, BUFF_SIZE, connection->buffers->aux_read_buff);
     buffer_init(&connection->buffers->write_buff, BUFF_SIZE, connection->buffers->aux_write_buff);
 
-    printf("Inicialize buffers\n");
     //State Machine parameter setting
     connection->stm.initial = CONN_READ;
     connection->stm.max_state = DONE;
     connection->stm.states = socks5_all_states();
 
     stm_init(&connection->stm);
-    printf("Vuelvo de stm init\n");
     connection->cli_conn->interests = OP_READ;
     connection->src_conn->interests = OP_NOOP;
-    printf("Incialización de stm...\n");
     //After setting up the configuration, we accept the connection
     connection->cli_conn->addr_len = sizeof(connection->cli_conn->addr);
-    printf("Llegue hasta linea previa de accept\n");
     connection->cli_conn->socket = accept(key->fd, (struct sockaddr *)&connection->cli_conn->addr,
     &connection->cli_conn->addr_len);
-    printf("Pase el accept\n");
     if(connection->cli_conn->socket == -1){
-        printf("Error in accept call of line 49 in passive_socks\n");
-        //TODO: close_socks5_connection(connection);
+        LogError("Error in accept call");
         close_socks_conn(connection);
         return;
     }
  
     int sel_ret = selector_fd_set_nio(connection->cli_conn->socket);
     if(sel_ret == -1){
-        printf("Error in selector_fd_set_nio call of line 57 in passive_socks\n");
+        LogError("Error in selector_fd_set_nio call");
         close_socks_conn(connection);
-        //TODO: close_socks5_connection(connection);
         return;
     }
-    
     
     selector_status sel_register_ret = selector_register(selector, connection->cli_conn->socket,
-    get_conn_actions_handler(), OP_READ, connection);
+        &connection_actions_handler, OP_READ, connection);
     if(sel_register_ret != SELECTOR_SUCCESS){
-        printf("Error in selector_fregister call of line 66 in passive_socks\n");
-        close_socks5_connection(connection);
-        //close_socks5_connection(connection);
+        LogError("Error in selector_fregister call: %s",
+        selector_error(sel_register_ret));
+        close_socks_conn(connection);
         return;
     }
-    printf("Salgo de start socket aparentemente sin errores!\n");
+    add_socks_connection();
 }
 
 static int start_socket(char * port, char * addr, 
                         const struct fd_handler * handler, int family){
     int ret_fd;
-    printf("Entro a start socket\n");
-
     struct addrinfo hints; //Naming corresponding to fields in 'man getaddrinfo'
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = family;
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
     struct addrinfo * res = NULL;
-
-    //TODO: Check if sprintf of unsigned short works
-    /*char service[256];
-    int base = 10;
-    sprintf(service, "%d", port);
-    printf("%s\n", service);*/
+    int error = 0;
 
     int ret_addrinfo;
     ret_addrinfo = getaddrinfo(addr, port, &hints, &res);
     if(ret_addrinfo){
-        printf("Error en getaddrinfo \n");
-        printf("%s", gai_strerror(ret_addrinfo));
+        LogError("Error en getaddrinfo. %s", gai_strerror(ret_addrinfo));
+        error = -1;
         goto finally;
     }
 
     ret_fd = socket(res->ai_family, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
     if(ret_fd == -1){
-        printf("Error creating socket in call of line 96\n");
+        LogError("Error creating socket");
         perror("socket");
+        error=-1;
         goto finally;    
     }
 
@@ -169,59 +157,59 @@ static int start_socket(char * port, char * addr,
     int ret_setsockopt = -1;
     ret_setsockopt = setsockopt(ret_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
     if(ret_setsockopt == -1){
-        printf("Error setstockopt in call of line 105\n");
+        LogError("Error setstockopt");
         perror("socket");
+        error=-1;
         goto finally;    
     }
 
     //Set for IPv6 if necessary
     if(family == AF_INET6){
-        printf("Family is IPv6\n");
         int ret_setsockopt_ipv6;
         ret_setsockopt_ipv6 = setsockopt(ret_fd, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
         if(ret_setsockopt_ipv6 == -1){
-            printf("Error setstockopt in call of line 115\n");
+            LogError("Error setstockopt");
             perror("socket");
+            error=-1;
             goto finally;
         }
     }
 
     int ret_bind = bind(ret_fd, res->ai_addr, res->ai_addrlen);
     if(ret_bind < 0){
-        printf("Error bind in call of line 123\n");
+        LogError("Error in bind call");
         perror("bind");
         goto finally;
         }
 
     int ret_listen = listen(ret_fd, MAX_QUEUE);
     if(ret_listen < 0){ 
-        printf("Error listen in call of line 130\n");
+        LogError("Error in listen call");
         perror("listen");
+        error=-1;
         goto finally; 
     }
 
     int ret_register;
     ret_register = selector_register(selector, ret_fd, handler, OP_READ, NULL);
     if(ret_register != SELECTOR_SUCCESS){
-        printf("Error selector_register in call of line 138\n");
+        LogError("Error selector_register");
+        error=-1;
         goto finally;
     }
-    printf("Termine ejecución de create_socket correctamente!\n");
 finally:
+    if(error == -1 && ret_fd != -1){ close(ret_fd); ret_fd = -1;}
     freeaddrinfo(res);
     return ret_fd;
 
 }
 
-static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
+//static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
 
 
 int start_server(char * socks_addr, char * socks_port){
-    printf("Entro a start server\n");
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1;
     int ret_code = -1;
-
-    signal(SIGCHLD, network_selector_signal_handler);
 
     //Initialization of selector struct
     struct timespec select_timeout = {0};
@@ -232,8 +220,7 @@ int start_server(char * socks_addr, char * socks_port){
     int selector_init_retvalue = -1;
     selector_init_retvalue = selector_init(&select_init_struct);
     if(selector_init_retvalue != SELECTOR_SUCCESS){
-        printf("Falle en linea 134 de start_server\n");
-        fprintf(stderr, "Selector initialization failed. %s",
+        LogError("Selector initialization failed: %s",
         selector_error(selector_init_retvalue));
         goto finally;
     }  
@@ -241,25 +228,24 @@ int start_server(char * socks_addr, char * socks_port){
     // Initialize the selector
     selector = selector_new(INITIAL_N);
     if(selector == NULL){
-        printf("Falle en linea 143 de start_server\n");
-        fprintf(stderr, "Selector creation failed.");
+        LogError("Selector creation failed");
         goto finally;
     }
 
     fd_socks_ipv4 = start_socket(socks_port, socks_addr, &passive_socket_fd_handler, AF_UNSPEC);
     if(fd_socks_ipv4 == -1){ 
-        printf("Falle en start_socket ipv4, linea 150 de start_server\n");
-        goto finally; }
+        LogError("Failed to start IPv4 socket");
+        goto finally; 
+    }
     else if(socks_addr == NULL){
         fd_socks_ipv6 = start_socket(socks_port, NULL, &passive_socket_fd_handler, AF_INET6);
         if(fd_socks_ipv6 == -1){
-            printf("Falle en start socket ipv6, linea 155 de start_server\n");
+            LogError("Failed to start IPv6 socket");
             goto finally; 
         }
     }
 
     while(1){
-        printf("Entre al superloop de start server\n");
         int selector_ret_value = selector_select(selector);
         if(selector_ret_value != SELECTOR_SUCCESS){goto finally;}
     }
@@ -269,4 +255,9 @@ finally:
     if(fd_socks_ipv6 != -1){close(fd_socks_ipv6);}
     return ret_code;
 
+}
+
+void
+cleanup(){
+    selector_destroy(selector);
 }

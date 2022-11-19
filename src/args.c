@@ -4,8 +4,11 @@
 #include <string.h>    /* memset */
 #include <errno.h>
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "include/args.h"
+#include "logger/logger.h"
+#include "users/user_mgmt.h"
 
 static char * port(char * s) {
     char * end = 0;
@@ -21,7 +24,9 @@ static char * port(char * s) {
 }
 
 static void
-user(char *s, struct users *user) {
+user(char *s) {
+    user_t * user = malloc(sizeof(user_t));
+
     char *p = strchr(s, ':');
     if(p == NULL) {
         fprintf(stderr, "password not found\n");
@@ -32,7 +37,7 @@ user(char *s, struct users *user) {
         user->name = s;
         user->pass = p;
     }
-
+    add_user(user);
 }
 
 static void
@@ -54,6 +59,9 @@ usage(const char *progname) {
         "   -P <conf port>   Puerto entrante conexiones configuracion\n"
         "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
         "   -v               Imprime información sobre la versión versión y termina.\n"
+        "   -m               Activa la opción de debugger.\n"
+        "   -n               Desactiva la opción de debugger.\n"
+        
         "\n"
         "   --doh-ip    <ip>    \n"
         "   --doh-port  <port>  XXX\n"
@@ -79,50 +87,53 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
 
     int c;
     while (true) {
-        c = getopt(argc, argv, "hl:L:Np:P:U:u:v");
+        c = getopt(argc, argv, "hl:L:Np:P:U:u:vmn");
         if (c == -1)
             break;
         switch (c) {
-        case 'h':
-            usage(argv[0]);
+            case 'h':
+                usage(argv[0]);
+                    goto finally;
+            case 'l':
+                args->socks_addr = optarg;
+                break;
+            case 'L':
+                args->mng_addr = optarg;
+                break;
+            case 'N':
+                //change_dissector_state(false);
+                break;
+            case 'p':
+                args->socks_port = port(optarg);
+                if (args->socks_port == NULL) {
+                    ret_code = 1;
+                    goto finally;
+                }
+                break;
+            case 'P':
+                args->mng_port = port(optarg);
+                if (args->mng_port == NULL) {
+                    ret_code = 1;
+                    goto finally;
+                }
+                break;
+            case 'u': 
+                user(optarg);
+                break;
+            case 'v':
+                version();
                 goto finally;
-        case 'l':
-            args->socks_addr = optarg;
-            break;
-        case 'L':
-            args->mng_addr = optarg;
-            break;
-        case 'N':
-            //change_dissector_state(false);
-            break;
-        case 'p':
-            args->socks_port = port(optarg);
-            if (args->socks_port == NULL) {
+            case 'm':
+                setLogOn();
+                break;
+            case 'n':
+                setLogOff();
+                break;
+            default:
+                fprintf(stderr, "unknown argument %d.\n", c);
                 ret_code = 1;
                 goto finally;
             }
-            break;
-        case 'P':
-            args->mng_port = port(optarg);
-            if (args->mng_port == NULL) {
-                ret_code = 1;
-                goto finally;
-            }
-            break;
-        case 'u':
-            //parse_and_add(optarg, false);
-            break;
-        case 'U':
-            //parse_and_add(optarg, true);
-            break;
-        case 'v':
-            version();
-                goto finally;
-        default:
-            fprintf(stderr, "unknown argument %d.\n", c);
-                ret_code = 1;
-                goto finally;
-        }
     }
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");

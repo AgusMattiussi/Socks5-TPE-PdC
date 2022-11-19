@@ -30,6 +30,9 @@
 #include "include/buffer.h"
 #include "include/args.h"
 #include "include/server.h"
+#include "include/stm.h"
+#include "logger/logger.h"
+#include "include/metrics.h"
 
 //TODO: #include "socks5nio.h"
 
@@ -42,36 +45,18 @@
 
 
 void socksv5_passive_accept(struct selector_key * key);
-/* void serverRead(struct selector_key *key);
-void serverWrite(struct selector_key *key);
-void clientRead(struct selector_key *key);
-void clientWrite(struct selector_key *key);
-void newFdClose(struct selector_key *key);
-void newFdBlock(struct selector_key *key); */
-
 static bool done = false;
-/* static buffer clientBuffer;
-static buffer serverBuffer;
-static uint8_t clientBufferData[1024];
-static uint8_t serverBufferData[1024]; */
-
-/* int clientFd = -1;
-int serverFd = -1;
-int clientInterest = OP_NOOP;
-int serverInterest = OP_NOOP; */
 
 static void
 sigterm_handler(const int signal) {
-    printf("signal %d, cleaning up and exiting\n",signal);
+    LogDebug("Exiting...");
     done = true;
+    cleanup();
+    exit(0);
 }
 
 int
 main(const int argc, char **argv) {
-    //unsigned port = 1080;
-    /* char * destPort = "9090";
-    char * destIp = "localhost"; */
-
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT, sigterm_handler);
 
@@ -79,7 +64,7 @@ main(const int argc, char **argv) {
 
     struct socks5args args;
     parse_args(argc, argv, &args);
-
+    start_metrics();
     int returnCode = start_server(args.socks_addr, args.socks_port);
 
     return returnCode;

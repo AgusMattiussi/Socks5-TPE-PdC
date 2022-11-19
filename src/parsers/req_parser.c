@@ -1,4 +1,5 @@
 #include "req_parser.h"
+#include "../logger/logger.h"
 
 #define REQ_DST_PORT_BYTES 2
 
@@ -22,11 +23,13 @@ set_dst_port_config(struct req_parser * parser){
 
 void 
 parse_addr_byte(struct req_parser * parser, uint8_t to_parse){
-    *parser->where_to = to_parse;
-    parser->where_to += 1;
-    if(--parser->to_parse == 0){
-        //Done
-        set_dst_port_config(parser);
+    *(parser->where_to++) = to_parse;
+
+    parser->to_parse--;
+    if (parser->to_parse == 0) {
+        parser->to_parse = 2;
+        parser->where_to = (uint8_t *)&(parser->port);
+        parser->state = REQ_DST_PORT;
     }
 }
 
@@ -34,16 +37,15 @@ void
 req_parse_byte(struct req_parser * parser, uint8_t to_parse){
     switch(parser->state){
         case REQ_VER:
-            printf("[REQ_VER] byte to parse %d\n", to_parse);
+            LogDebug("[REQ_VER] byte to parse %d\n", to_parse);
             if(to_parse == SOCKS_VERSION) parser->state = REQ_CMD;
             else{
-                fprintf(stdout, "Request has unsupported version.");
+                LogDebug("Request has unsupported version.");
                 parser->state = REQ_ERROR;
             }
             break;
         case REQ_CMD:
-        printf("[REQ_CMD] byte to parse %d\n", to_parse);
-
+            LogDebug("[REQ_CMD] byte to parse %d\n", to_parse);
             if(to_parse == REQ_CMD_CONNECT || to_parse == REQ_CMD_BIND ||
             to_parse == REQ_CMD_UDP){
                 parser->cmd = to_parse;
@@ -52,20 +54,16 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             else{parser->state=REQ_ERROR;}
             break;
         case REQ_RSV:
-        printf("[REQ_RSV] byte to parse %d\n", to_parse);
-
+            LogDebug("[REQ_RSV] byte to parse %d\n", to_parse);
             if(to_parse == 0x00) parser->state = REQ_ATYP;
             else{parser->state = REQ_ERROR;}
             break;
         case REQ_ATYP:
-        printf("[REQ_ATYP] byte to parse %d\n", to_parse);
-
+            LogDebug("[REQ_ATYP] byte to parse %d\n", to_parse);
             //We need to initialize according to the addrtype
             parser->type = to_parse;
-
             if(to_parse == IPv4){
-                memset(&parser->addr.ipv4, 0, sizeof(struct sockaddr_in));
-
+                memset(&(parser->addr.ipv4), 0, sizeof(parser->addr.ipv4));
                 parser->to_parse = IPv4_BYTES;
                 parser->addr.ipv4.sin_family = AF_INET;
                 parser->where_to = (uint8_t *)&(parser->addr.ipv4.sin_addr);
@@ -73,12 +71,10 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
                 parser->state = REQ_DST_ADDR;
             }
             else if(to_parse == IPv6){
-                memset(&parser->addr.ipv6, 0, sizeof(struct sockaddr_in6));
-
+                memset(&(parser->addr.ipv6), 0, sizeof(parser->addr.ipv6));
                 parser->to_parse = IPv6_BYTES;
                 parser->addr.ipv6.sin6_family = AF_INET6;
-                parser->where_to = (uint8_t *)&(parser->addr.ipv6.sin6_addr);
-
+                parser->where_to = parser->addr.ipv6.sin6_addr.s6_addr;
                 parser->state = REQ_DST_ADDR;
             }
             else if(to_parse == FQDN){
@@ -88,12 +84,12 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
                 parser->state = REQ_DST_ADDR;
             }
             else{
-                fprintf(stdout, "Req: Wrong address type");
+                LogError("Req: Wrong address type");
                 parser->state = REQ_ERROR;
             }
             break;
         case REQ_DST_ADDR:
-        printf("[REQ_DST_ADDR] byte to parse %d\n", to_parse);
+            LogDebug("[REQ_DST_ADDR] byte to parse %d\n", to_parse);
 
             if(parser->type == FQDN && parser->to_parse == -2){
                 // Tengo que leer los octetos exactos, el primero me dice cuantos tiene
@@ -106,7 +102,7 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
                     // Si hay bytes para parsear, me guardo cuantos son, delimito el final del
                     // string dado por la cantidad que tengo para leer, y paso a parsearlo
                     parser->to_parse = to_parse; //Quedo medio trabalengua
-                    parser->addr.fqdn[parser->to_parse] = '\0';
+                    parser->addr.fqdn[parser->to_parse] = 0;
                     parser->state = REQ_DST_ADDR;
                 }
                 // Nota: no vuelve a entrar aca por (a) el state para a ser REQ_DST_PORT,
@@ -117,29 +113,29 @@ req_parse_byte(struct req_parser * parser, uint8_t to_parse){
             }
             break;
         case REQ_DST_PORT:
-            printf("[REQ_DST_PORT] byte to parse %d\n", to_parse);
-            *parser->where_to = to_parse;
-            if(--parser->to_parse == 0){
-                printf("Termino de parsear el port, y el estado pasa a REQ_DONE\n");
+            LogDebug("[REQ_DST_PORT] byte to parse %d\n", to_parse);
+            *(parser->where_to++) = to_parse;
+            parser->to_parse--;
+            if (parser->to_parse == 0) {
                 parser->state = REQ_DONE;
             }
             break;
         case REQ_DONE: case REQ_ERROR: break;
         default:
-            fprintf(stdout, "Unrecognized request parsing state, ending parsing");
+            LogError("Unrecognized request parsing state, ending parsing");
             break;
     }
 }
 
 enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
-    printf("Entro a req_parse_full\n");
     while(buffer_can_read(buff)){
         uint8_t to_parse = buffer_read(buff);
         req_parse_byte(parser, to_parse);
         if(parser->state == REQ_ERROR){
-            fprintf(stdout, "Error parsing request, returning.");
+            LogError("Error parsing request, returning.");
             return REQ_ERROR;
         }
+        if(parser->state == REQ_DONE){break;}
     }
     return parser->state;
 }
