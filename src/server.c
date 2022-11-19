@@ -2,7 +2,6 @@
 #include "logger/logger.h"
 #include "include/metrics.h"
 
-#define INITIAL_N 20
 #define MAX_QUEUE 50
 #define BUFF_SIZE 2048
 
@@ -50,6 +49,8 @@ close_socks_conn(socks_conn_model * connection) {
     if (connection->resolved_addr != NULL) {
         freeaddrinfo(connection->resolved_addr);
     }
+
+    free_curr_user();
 
     buffer_reset(&connection->buffers->read_buff);
     buffer_reset(&connection->buffers->write_buff);
@@ -124,7 +125,7 @@ static void passive_socks_socket_handler(struct selector_key * key){
         close_socks_conn(connection);
         return;
     }
-    add_socks_connection();
+    add_socks_connection(); // Metrics
 }
 
 static int start_socket(char * port, char * addr, 
@@ -169,8 +170,8 @@ static int start_socket(char * port, char * addr,
         ret_setsockopt_ipv6 = setsockopt(ret_fd, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
         if(ret_setsockopt_ipv6 == -1){
             LogError("Error setstockopt");
-            perror("socket");
-            error=-1;
+            perror("Socket: ");
+            error = -1;
             goto finally;
         }
     }
@@ -178,14 +179,14 @@ static int start_socket(char * port, char * addr,
     int ret_bind = bind(ret_fd, res->ai_addr, res->ai_addrlen);
     if(ret_bind < 0){
         LogError("Error in bind call");
-        perror("bind");
+        perror("Bind: ");
         goto finally;
         }
 
     int ret_listen = listen(ret_fd, MAX_QUEUE);
     if(ret_listen < 0){ 
         LogError("Error in listen call");
-        perror("listen");
+        perror("Listen: ");
         error=-1;
         goto finally; 
     }
@@ -201,36 +202,11 @@ finally:
     if(error == -1 && ret_fd != -1){ close(ret_fd); ret_fd = -1;}
     freeaddrinfo(res);
     return ret_fd;
-
 }
 
-//static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
-
-
-int start_server(char * socks_addr, char * socks_port){
+void 
+start_server(char * socks_addr, char * socks_port){
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1;
-    int ret_code = -1;
-
-    //Initialization of selector struct
-    struct timespec select_timeout = {0};
-    select_timeout.tv_sec = 100;
-    struct selector_init select_init_struct = {SIGCHLD, select_timeout};
-
-    // Configure the selector
-    int selector_init_retvalue = -1;
-    selector_init_retvalue = selector_init(&select_init_struct);
-    if(selector_init_retvalue != SELECTOR_SUCCESS){
-        LogError("Selector initialization failed: %s",
-        selector_error(selector_init_retvalue));
-        goto finally;
-    }  
-
-    // Initialize the selector
-    selector = selector_new(INITIAL_N);
-    if(selector == NULL){
-        LogError("Selector creation failed");
-        goto finally;
-    }
 
     fd_socks_ipv4 = start_socket(socks_port, socks_addr, &passive_socket_fd_handler, AF_UNSPEC);
     if(fd_socks_ipv4 == -1){ 
@@ -244,7 +220,6 @@ int start_server(char * socks_addr, char * socks_port){
             goto finally; 
         }
     }
-
     while(1){
         int selector_ret_value = selector_select(selector);
         if(selector_ret_value != SELECTOR_SUCCESS){goto finally;}
@@ -253,11 +228,10 @@ int start_server(char * socks_addr, char * socks_port){
 finally:
     if(fd_socks_ipv4 != -1){close(fd_socks_ipv4);}
     if(fd_socks_ipv6 != -1){close(fd_socks_ipv6);}
-    return ret_code;
-
 }
 
 void
-cleanup(){
-    selector_destroy(selector);
-}
+set_selector(fd_selector * new_selector){ selector = *new_selector; }
+
+void
+cleanup(){ selector_destroy(selector); }

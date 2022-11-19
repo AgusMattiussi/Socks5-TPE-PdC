@@ -52,8 +52,8 @@ struct std_conn_model{
 };
 
 struct buffers_t{
-    buffer read_buff; // CLI -> SRV
-    buffer write_buff; // SRV -> CLI
+    buffer read_buff;
+    buffer write_buff;
 
     uint8_t * aux_read_buff;
     uint8_t * aux_write_buff;
@@ -92,6 +92,7 @@ typedef struct socks_conn_model{
 
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;
+
     bool guardian;
 
 } socks_conn_model;

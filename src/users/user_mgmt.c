@@ -8,6 +8,7 @@ static user_t * users[MAX_USERS];
 
 uint8_t n_users = 0;
 bool require_auth;
+char * curr_user;
 
 void
 init_auth_mgmt(){ require_auth = false; n_users = 0; }
@@ -15,6 +16,28 @@ init_auth_mgmt(){ require_auth = false; n_users = 0; }
 bool 
 valid_credentials(char * username, char * password, char * user2, char * pass2){
     return strcmp(username, user2) == 0 && strcmp(password, pass2) == 0;
+}
+
+bool
+needs_auth(){ return require_auth; }
+
+char *
+get_curr_user(){ return curr_user; }
+
+void
+set_curr_user(char * username){
+    curr_user = malloc(sizeof(strlen(username)));
+    memcpy(curr_user, username, strlen(username));
+}
+
+void
+free_curr_user(){
+    if(curr_user!=NULL)free(curr_user);
+}
+
+uint8_t
+get_total_curr_users(){
+    return n_users;
 }
 
 uint8_t 

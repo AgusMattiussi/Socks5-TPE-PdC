@@ -1,37 +1,32 @@
 #include "conn_parser.h"
 #include "../logger/logger.h"
 #include <stdio.h>
+#include "../users/user_mgmt.h"
 
-bool check_if_valid_method(uint8_t byte){
+bool 
+check_if_valid_method(uint8_t byte){
     return byte == NO_AUTH || byte == USER_PASS;
 }
 
-void start_connection_parser(struct conn_parser * parser){
+void 
+start_connection_parser(struct conn_parser * parser){
     parser->to_parse = 0;
-    parser->state = CONN_VERSION; // Start of msg
+    parser->state = CONN_VERSION;
     parser->auth = NO_METHODS;
     parser->buff = NULL;
 }
 
-void set_new_method(struct conn_parser * parser, enum auth_method to_parse){
-    /*if(to_parse == GSSAPI){
-        LogDebug("GSSAPI is not supported in this project's scope.\n");
-        return;
-    }
-    if(to_parse == USER_PASS){
-         parser->auth = USER_PASS;
-    }
-    else if(to_parse == NO_AUTH && parser->auth != USER_PASS)parser->auth = NO_AUTH;*/
-
-    if(to_parse == USER_PASS || (to_parse == NO_AUTH && parser->auth != USER_PASS)){
+void 
+set_new_method(struct conn_parser * parser, enum auth_method to_parse){
+    if(to_parse == USER_PASS || 
+    (!needs_auth() && to_parse == NO_AUTH && parser->auth != USER_PASS)){
         parser->auth = to_parse;
     }
-
 }
 
-void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
+void 
+conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
     switch(parser->state){
-        //What state are we in, and what does this byte mean in that context
         case CONN_VERSION:
             LogDebug("[CONN_VERSION] Value of byte to parse: %d\n", to_parse);
             if(to_parse == SOCKS_VERSION){
@@ -60,28 +55,25 @@ void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse){
             if(parser->to_parse==0) parser->state = CONN_DONE;
             break;
         case CONN_DONE: case CONN_ERROR: break;
-        default: LogError("Error at parsing. Please try again.\n");
+        default: LogError("Error at parsing. Please try again.\n"); 
     }
 }
 
-enum conn_state conn_parse_full(struct conn_parser * parser, buffer * buff){
-    // Take byte to byte and use helper function to pass between states
-    // We can use buffer functions directly to know when to stop reading
+enum conn_state 
+conn_parse_full(struct conn_parser * parser, buffer * buff){
     while(buffer_can_read(buff)){
         uint8_t to_parse = buffer_read(buff);
         conn_parse_byte(parser, to_parse);
         if(parser->state == CONN_ERROR){
-            LogError("Error while parsing input.\n"); //Might be excesive
+            LogError("Error while parsing input.\n");
             return CONN_ERROR;
         }
         else if(parser->state == CONN_DONE){
-            //For debugging purposes
             LogDebug("Connection OK!\n");
             return CONN_DONE;
         }
     }
     if(parser->state != CONN_ERROR && parser->state != CONN_DONE){
-        //For debugging purposes
         LogError("Shouldn't reach this state, but parsing went wrong with no aparent error?\n");
     }
     return parser->state;
