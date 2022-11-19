@@ -277,10 +277,34 @@ static controlProtStmState authWrite(struct selector_key * key){
     memcpy(writePtr, authResult, arSize);
     buffer_write_adv(cpc->writeBuffer, arSize);
 
+    /* Cambiamos el interes a lectura, para pasar a CP_EXECUTE (o si 
+        la contrasenia fue incorrecta, volver a CP_AUTH)*/
     cpc->interests = OP_READ;
     selector_set_interest_key(key, cpc->interests);
 
     if(!validPassword)
         return CP_AUTH; 
     return CP_EXECUTE;
+}
+
+/* Leemos el comando enviado por el usuario */
+static controlProtStmState executeRead(struct selector_key * key){
+    printf("[AUTH] executeRead\n");
+    controlProtConn * cpc = (controlProtConn *) key->data;
+
+    if(!buffer_can_read(cpc->readBuffer)){
+        printf("[AUTH/executeRead] Buffer Vacio: !buffer_can_read\n");
+        //TODO: Manejar error
+        return CP_AUTH;
+    }
+
+    size_t bytesLeft;
+    buffer_read_ptr(cpc->readBuffer, &bytesLeft);
+
+    if(bytesLeft <= 0){
+        printf("[AUTH/executeRead] Error: bytesLeft <= 0\n");
+        //TODO: Manejar
+    }
+
+    
 }
