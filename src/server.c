@@ -73,15 +73,11 @@ static void dummyBlock(struct selector_key * key){
     printf("\n DUMMY BLOCK\n");
 }
 
-static void dummyClose(struct selector_key * key){
-    printf("\n DUMMY CLOSE\n");
-}
-
 const fd_handler cpFdHandler = {
     .handle_read = cpReadHandler,
     .handle_write = cpWriteHandler,
     .handle_block = dummyBlock,
-    .handle_close = dummyClose
+    .handle_close = cpCloseHandler
 };
 
 
@@ -92,30 +88,29 @@ static void passive_cp_socket_handler(struct selector_key * key) {
     /* Aceptamos la conexion entrante */
     int clientFd = accept(key->fd, NULL, NULL);
     if(clientFd < 0){
-        //TODO: Manejar error (Juli)
         printf(" ERROR en passive_cp_socket_handler (accept)\n");
         return;
     }
 
     /* Hacemos el socket no bloqueante */
     if(selector_fd_set_nio(clientFd) == -1){
-        // TODO: Manejar error (Juli)
         printf(" ERROR en passive_cp_socket_handler (selector_fd_set_nio)\n");
+        close(clientFd);
         return;
     }
 
     /* Inicializamos la estructura con los datos de esta conexion */
-    // TODO: Considerar aniadirlo a una lista?
+    // TODO: Considerar aniadirlo a una lista para liberar todo al?
     new = newControlProtConn(clientFd);
     if(new == NULL){
-        //TODO: Manejar error (Juli)
         printf(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
+        close(clientFd);
         return;
     }
 
-    if(selector_register(key->s, new->fd, /*TODO:*/ &cpFdHandler, new->interests, new) != 0){
-        //TODO: Manejar error (Juli)
+    if(selector_register(key->s, new->fd, /*TODO: Completar handlers*/ &cpFdHandler, new->interests, new) != 0){
         printf(" ERROR en passive_cp_socket_handler (selector_register)\n");
+        freeControlProtConn(new, key->s); // Esto incluye el cerrado de clientFd
         return;
     }
 

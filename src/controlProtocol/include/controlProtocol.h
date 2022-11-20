@@ -80,5 +80,7 @@ typedef struct controlProtConn {
 controlProtConn * newControlProtConn(int fd);
 void cpWriteHandler(struct selector_key * key);
 void cpReadHandler(struct selector_key * key);
+void cpCloseHandler(struct selector_key * key);
+void freeControlProtConn(controlProtConn * cpc, fd_selector s);
 
 #endif

@@ -147,7 +147,7 @@ void getMetrics(cpCommandParser * parser, char * answer){
 
     int titleLen = strlen(METRICS_CSV_TITLE);
     answer = calloc(2*titleLen, sizeof(char));
-    sprintf(answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 1,
+    sprintf(answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 2,
         METRICS_CSV_TITLE, get_current_socks(), get_historic_socks(), 
         get_current_mgmt(), get_historic_mgmt(), get_current_total(),
         get_historic_total(), get_bytes_transferred()
