@@ -568,9 +568,8 @@ copy_read(struct selector_key * key) {
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
             selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture wrong set?
 
-            if(connection->pop3_parser != NULL && sniffer_is_on()){
+            if(ntohs(connection->parsers->req_parser->port) == POP3_PORT && connection->pop3_parser != NULL && sniffer_is_on()){
                 if(pop3_parse(connection->pop3_parser, copy->write_buff) == POP3_DONE){
-                    //TODO: loggin function to print pop3 info
                     pass_information(connection);
                 }
             }

@@ -128,7 +128,6 @@ void
 pass_information(socks_conn_model * connection){
 	struct req_parser * parser = connection->parsers->req_parser;
 	struct pop3_parser * pop3_parser = connection->pop3_parser;
-	//TODO: When dissector is ready, implement function
 	time_t now;
     time(&now);
 	struct tm tp; //Slight twak for time zone with respect to S.O.'s answer

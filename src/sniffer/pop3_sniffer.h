@@ -58,7 +58,6 @@ octets, including the terminating CRLF.
 #define POP3_PORT 110
 
 typedef enum pop3_state {
-    //GREETING,
     POP3_USER_CMD,
     POP3_USER,
     POP3_PASS_CMD,
