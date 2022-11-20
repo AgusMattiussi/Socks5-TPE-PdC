@@ -134,17 +134,15 @@ enum req_state mng_req_parse_full(struct req_parser * parser, buffer * buff){
 
 enum socks_state errno_to_req_response_state(const int e) {
     switch (e) {
-    case 0:
-        return RES_SUCCESS;
-    case ECONNREFUSED:
-        return RES_CONN_REFUSED;
-    case EHOSTUNREACH:
-        return RES_HOST_UNREACHABLE;
-    case ENETUNREACH:
-        return RES_NET_UNREACHABLE;
-    case ETIMEDOUT:
-        return RES_TTL_EXPIRED;
-    default:
-        return RES_CMD_UNSUPPORTED;
+        case ECONNREFUSED:
+            return RES_CONN_REFUSED;
+        case EHOSTUNREACH:
+            return RES_HOST_UNREACHABLE;
+        case ENETUNREACH:
+            return RES_NET_UNREACHABLE;
+        case ETIMEDOUT:
+            return RES_TTL_EXPIRED;
+        default:
+            return RES_CMD_UNSUPPORTED;
     }
 }

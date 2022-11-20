@@ -107,11 +107,12 @@ static void passive_cp_socket_handler(struct selector_key * key) {
         freeControlProtConn(new, key->s); // Esto incluye el cerrado de clientFd
         return;
     }
-
+    add_mgmt_connection(); // Metrics
     printf(" Socket pasivo creado exitosamente \n");
 }
 
-static void passive_socks_socket_handler(struct selector_key * key){
+static void 
+passive_socks_socket_handler(struct selector_key * key){
     //TODO: Check if enough fds are available
 
     socks_conn_model * socks = new_socks_conn();
@@ -250,8 +251,6 @@ void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * 
         }
     }
 
-    
-
     while(1){
         int selector_ret_value = selector_select(selector);
         if(selector_ret_value != SELECTOR_SUCCESS){goto finally;}
@@ -260,8 +259,8 @@ void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * 
 finally:
     if(fd_socks_ipv4 != -1){close(fd_socks_ipv4);}
     if(fd_socks_ipv6 != -1){close(fd_socks_ipv6);}
-
-
+    if(fd_mng_ipv4 != -1){close(fd_mng_ipv4);}
+    if(fd_mng_ipv6 != -1){close(fd_mng_ipv6);}
 }
 
 void

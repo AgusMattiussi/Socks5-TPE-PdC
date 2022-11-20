@@ -9,6 +9,29 @@
  |  Connection functions
  -----------------------*/
 
+static int 
+check_buff_and_receive(buffer * buff_ptr, int socket){
+    size_t byte_n;
+    uint8_t * write_ptr = buffer_write_ptr(buff_ptr, &byte_n);
+    ssize_t n_received = recv(socket, write_ptr, byte_n, 0); //TODO:Flags?
+
+    if(n_received <= 0) return -1;
+    buffer_write_adv(buff_ptr, n_received);
+    return n_received;
+}
+
+static int 
+check_buff_and_send(buffer * buff_ptr, int socket){
+    size_t n_available;
+    uint8_t * read_ptr = buffer_read_ptr(buff_ptr, &n_available);
+    ssize_t n_sent = send(socket, read_ptr, n_available, 0); //TODO: Flags?
+    if(n_sent == -1){
+        LogError("Error sending bytes to client socket.");
+        return -1;
+    }
+    buffer_read_adv(buff_ptr, n_sent);
+    return n_sent;
+}
 
 void conn_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
@@ -19,12 +42,8 @@ static enum socks_state conn_read(struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
     struct conn_parser * parser = connection->parsers->connect_parser;
 
-    size_t byte_n;
-    uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO:Flags?
-
-    if(n_received <= 0) return ERROR;
-    buffer_write_adv(&connection->buffers->read_buff, n_received);
+    if(check_buff_and_receive(&connection->buffers->read_buff,
+                                    connection->cli_conn->socket) == -1){ return ERROR; }
 
     enum conn_state ret_state = conn_parse_full(parser, &connection->buffers->read_buff);
     if(ret_state == CONN_ERROR){
@@ -49,18 +68,16 @@ static enum socks_state conn_read(struct selector_key * key){
     return CONN_READ;
 }
 
+
 static enum socks_state 
 conn_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
 
-    size_t n_available;
-    uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &n_available);
-    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, n_available, 0); //TODO: Flags?
-    if(n_sent == -1){
+    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
         LogError("Error sending bytes to client socket.");
         return ERROR;
     }
-    buffer_read_adv(&connection->buffers->write_buff, n_sent);
+
     if(buffer_can_read(&connection->buffers->write_buff)){
         return CONN_WRITE;
     }
@@ -99,11 +116,8 @@ conn_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct auth_parser * parser = connection->parsers->auth_parser;
 
-    size_t byte_n;
-    uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &byte_n);
-    ssize_t n_received = recv(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
-    if(n_received <= 0) return ERROR;
-    buffer_write_adv(&connection->buffers->read_buff, n_received);
+    if(check_buff_and_receive(&connection->buffers->read_buff,
+                                    connection->cli_conn->socket) == -1){ return ERROR; }
 
     enum auth_state ret_state = auth_parse_full(parser, &connection->buffers->read_buff);
     if(ret_state == AUTH_ERROR){
@@ -138,11 +152,11 @@ static enum socks_state
 auth_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
 
-    size_t byte_n;
-    uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &byte_n);
-    ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, byte_n, 0); //TODO: Flags?
-    if(n_sent <= 0) return ERROR;
-    buffer_read_adv(&connection->buffers->write_buff, n_sent);
+    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
+        LogError("Error sending bytes to client socket.");
+        return ERROR;
+    }
+
     if(buffer_can_read(&connection->buffers->write_buff)){
         return AUTH_WRITE;
     }
@@ -201,13 +215,18 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
     return (int)space_needed;
 }
 
-static enum socks_state 
-manage_req_error(struct req_parser * parser, enum socks_state state,
-                                socks_conn_model * conn, struct selector_key * key) {
-    parser->res_parser.state = state;
+static void
+set_res_parser(struct req_parser * parser, enum socks_state socks_state){
+    parser->res_parser.state = socks_state;
     parser->res_parser.type = parser->type;
     parser->res_parser.port = parser->port;
     parser->res_parser.addr = parser->addr;
+}
+
+static enum socks_state 
+manage_req_error(struct req_parser * parser, enum socks_state socks_state,
+                socks_conn_model * conn, struct selector_key * key) {
+    set_res_parser(parser, socks_state);
     selector_status selector_ret = selector_set_interest(key->s, conn->cli_conn->socket, OP_WRITE);
     int response_created = req_response_message(&conn->buffers->write_buff, &parser->res_parser);
     return ((selector_ret == SELECTOR_SUCCESS) && (response_created != -1))?REQ_WRITE:ERROR;
@@ -334,12 +353,8 @@ req_read(struct selector_key * key) {
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct req_parser * parser = connection->parsers->req_parser;
 
-    size_t n_bytes;
-    uint8_t * buff_ptr = buffer_write_ptr(&connection->buffers->read_buff, &n_bytes);
-    ssize_t bytes_read = recv(connection->cli_conn->socket, buff_ptr, n_bytes, MSG_NOSIGNAL);
-
-    if (bytes_read <= 0){ return ERROR; }
-    buffer_write_adv(&connection->buffers->read_buff, bytes_read);
+    if(check_buff_and_receive(&connection->buffers->read_buff,
+                                    connection->cli_conn->socket) == -1){ return ERROR; }
 
     enum req_state parser_state = req_parse_full(parser, &connection->buffers->read_buff);
     if (parser_state == REQ_DONE) {
@@ -448,14 +463,12 @@ req_write(struct selector_key * key) {
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct req_parser * parser = connection->parsers->req_parser;
 
-    size_t count;
-    uint8_t * bufptr = buffer_read_ptr(&connection->buffers->write_buff, &count);
-    ssize_t len = send(connection->cli_conn->socket, bufptr, count, MSG_NOSIGNAL);
-    if (len == -1) {
+    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
+        LogError("Error sending bytes to client socket.");
         return ERROR;
     }
 
-    buffer_read_adv(&connection->buffers->write_buff, len);
+
     conn_information(connection);
     if(buffer_can_read(&connection->buffers->write_buff)){ return REQ_WRITE; }
     if(parser->res_parser.state != RES_SUCCESS){return DONE; }
@@ -531,16 +544,16 @@ copy_read(struct selector_key * key) {
         LogError("Copy is null\n");
         return ERROR;
     }
-
     if(buffer_can_write(copy->write_buff)){
-        size_t n_bytes;
-        uint8_t * buff_ptr = buffer_write_ptr(copy->write_buff, &n_bytes);
-        ssize_t bytes_read = recv(key->fd, buff_ptr, n_bytes, MSG_NOSIGNAL);
+        int bytes_read = check_buff_and_receive(copy->write_buff, key->fd);
+        if(bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)){
+            return COPY;
+        }
+
         if(bytes_read > 0){
-            buffer_write_adv(copy->write_buff, bytes_read);
             copy->other->interests = copy->other->interests | OP_WRITE;
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
-            selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture wrong set?
+            selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture error?
 
             if(ntohs(connection->parsers->req_parser->port) == POP3_PORT && 
                 connection->pop3_parser != NULL && sniffer_is_on()){
@@ -548,30 +561,14 @@ copy_read(struct selector_key * key) {
                     pass_information(connection);
                 }
             }
-
             return COPY;
-        }
-        /*
-       If  no messages are available at the socket, the receive calls
-       wait for a message to arrive, unless the socket is nonblocking
-       (see fcntl(2)), in which case the value -1 is returned and the
-       external variable errno is set to EAGAIN or EWOULDBLOCK.   The
-       receive  calls  normally  return any data available, up to the
-       requested amount, rather than waiting for receipt of the  full
-       amount requested. --> Volvemos a entrar sin cambiar intenciones,
-       esta procesando.
-        */
-        if(errno == EAGAIN || errno == EWOULDBLOCK){ 
-            return COPY; 
         }
 
         copy->connection_interests = copy->connection_interests & ~OP_READ;
         copy->interests = copy->interests & copy->connection_interests;
         selector_set_interest(key->s, copy->fd, copy->interests); //TODO: Capture selector error?
-        //TODO: Close read copy.>fd connection. How to?
-        // Solution: 
         // https://stackoverflow.com/questions/570793/how-to-stop-a-read-operation-on-a-socket
-        // and (from top answer) man -s 2 shutdown
+        // man -s 2 shutdown
         shutdown(copy->fd, SHUT_RD);
         copy->other->connection_interests = 
             copy->other->connection_interests & OP_READ;
@@ -602,13 +599,14 @@ copy_write(struct selector_key * key) {
         return ERROR;
     }
 
-    size_t n_bytes;
-    uint8_t * buff_ptr = buffer_read_ptr(copy->read_buff, &n_bytes);
-    ssize_t bytes_sent = send(key->fd, buff_ptr, n_bytes, MSG_NOSIGNAL);
+    int bytes_sent = check_buff_and_send(copy->read_buff, key->fd);
+    if(bytes_sent == -1){
+        if(errno == EWOULDBLOCK || errno == EAGAIN){ return COPY; }
+        LogError("Error sending bytes to client socket.");
+        return ERROR;
+    }
 
-    if (bytes_sent == -1){ return (errno == EWOULDBLOCK || errno == EAGAIN)?COPY:ERROR; }
-
-    buffer_read_adv(copy->read_buff, bytes_sent);
+    //buffer_read_adv(copy->read_buff, bytes_sent);
     add_bytes_transferred((long)bytes_sent);
     copy->other->interests = (copy->other->interests | OP_READ) & copy->other->connection_interests;
     selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture return?

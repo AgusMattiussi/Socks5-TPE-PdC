@@ -13,8 +13,6 @@ stm_init(struct state_machine *stm) {
     for(unsigned i = 0 ; i <= stm->max_state; i++) {
         if(i != stm->states[i].state) {
             abort();
-        } else {
-            printf("[state_machine] Iniciado estado: %d\n", i);
         }
     }
     if(stm->initial < stm->max_state) {
@@ -53,7 +51,6 @@ void jump(struct state_machine *stm, unsigned next, struct selector_key *key) {
 
 unsigned
 stm_handler_read(struct state_machine *stm, struct selector_key *key) {
-    printf("estoy en handler_read de la stm\n");
     handle_first(stm, key);
     if(stm->current->on_read_ready == 0) {
         abort();
