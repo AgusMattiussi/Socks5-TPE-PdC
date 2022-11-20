@@ -17,10 +17,10 @@ cpCommandParserState cpcpParseByte(cpCommandParser * parser, uint8_t byte){
             parser->code = byte;
             return CPCP_HAS_DATA;
         case CPCP_HAS_DATA:         // En la version actual del protocolo, HAS_DATA = 0|1 para el cliente
-            printf("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte);
-            if(byte == 0)
+            printf("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte); //TODO: Cambiar char
+            if(byte == '0')
                 return CPCP_DONE;   // Por default, hasData = 0
-            if(byte == 1){
+            if(byte == '1'){
                 parser->hasData = 1;
                 return CPCP_READ_DATA;
             }

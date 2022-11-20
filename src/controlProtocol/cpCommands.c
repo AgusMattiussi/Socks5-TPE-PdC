@@ -132,8 +132,7 @@ void getSniffedUsersList(cpCommandParser * parser, char * answer){
     answer = calloc(3, 1 /* x Tamanio Usuario+Password */);
 
     /* TODO: Cargar en answer los usuarios y sus contrasenias 
-       uno por uno, en formato CSV    
-    */
+       uno por uno, en formato CSV */
 
    answer[0] = STATUS_SUCCESS;
    answer[1] = 1;   // HAS_DATA = 1
@@ -146,15 +145,19 @@ void getMetrics(cpCommandParser * parser, char * answer){
         return;
     }
 
+    int titleLen = strlen(METRICS_CSV_TITLE);
+    answer = calloc(2*titleLen, sizeof(char));
+    sprintf(answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 1,
+        METRICS_CSV_TITLE, get_current_socks(), get_historic_socks(), 
+        get_current_mgmt(), get_historic_mgmt(), get_current_total(),
+        get_historic_total(), get_bytes_transferred()
+    );
 
-    answer = calloc(3, 1 /* x Tamanio Metricas */);
+    //TODO: Sacar el \0
 
-    /* TODO: Cargar en answer las metricas. Deberian ser siempre 
-       dos lineas, en formato CSV    
-    */
-
-   answer[0] = STATUS_SUCCESS;
-   answer[1] = 1;   // HAS_DATA = 1
+   printf(answer);
    return;
 }
+
+
 
