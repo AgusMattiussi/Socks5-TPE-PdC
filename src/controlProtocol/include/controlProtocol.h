@@ -76,7 +76,5 @@ typedef struct controlProtConn {
 controlProtConn * newControlProtConn(int fd);
 void cpWriteHandler(struct selector_key * key);
 void cpReadHandler(struct selector_key * key);
-void changePassword(cpCommandParser * parser, char * answer);
-
 
 #endif

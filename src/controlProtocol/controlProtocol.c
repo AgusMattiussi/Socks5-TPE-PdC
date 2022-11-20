@@ -357,7 +357,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
             changePassword(parser, answer);
             break;
         case CP_LIST_USERS:
-            /* code */
+            getSniffedUsersList(parser, answer);
             break;
         case CP_GET_METRICS:
             /* code */

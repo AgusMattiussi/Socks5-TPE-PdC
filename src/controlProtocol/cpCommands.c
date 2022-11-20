@@ -99,3 +99,20 @@ void turnOnPassDissectors(cpCommandParser * parser, char * answer){
 void turnOffPassDissectors(cpCommandParser * parser, char * answer){
     switchPassDissectors(parser, answer, OFF);
 }
+
+void getSniffedUsersList(cpCommandParser * parser, char * answer){
+    if(parser->hasData == 1){
+        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
+        return;
+    }
+
+    answer = calloc(3, 1 /* x Tamanio Usuario+Password */);
+
+    /* TODO: Cargar en answer los usuarios y sus contrasenias 
+       uno por uno, en formato CSV    
+    */
+
+   answer[0] = STATUS_SUCCESS;
+   answer[1] = 1;   // HAS_DATA = 1
+   return;
+}
