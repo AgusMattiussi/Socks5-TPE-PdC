@@ -94,6 +94,7 @@ controlProtConn * newControlProtConn(int fd){
         new->fd = fd;
         new->interests = OP_WRITE;  // El protocolo comienza escribiendo HELLO
         new->currentState = CP_HELLO;
+        new->helloWritten = false;
     }
     return new;
 }
@@ -107,6 +108,7 @@ void freeControlProtConn(controlProtConn * cpc, fd_selector s){
     selector_unregister_fd(s, cpc->fd, false);
     close(cpc->fd);
     free(cpc);
+    //TODO: Descontar de las conexiones actuales en metrics
 }
 
 /* =========================== Handlers para el fd_handler =============================*/
@@ -119,53 +121,64 @@ void cpWriteHandler(struct selector_key * key){
     /* Llamo a la funcion de escritura de este estado. 
         Actualizo el estado actual */
     cpc->currentState = stm_handler_write(&cpc->connStm, key);
+    if(cpc->currentState == CP_ERROR){
+        freeControlProtConn(cpc, key->s);
+    }
+    // TODO: que pasa si entre aca por segunda vez?
 
-    if(!buffer_can_read(cpc->writeBuffer)){
-        // TODO: No hay bytes para leer. Manejar error
-        printf("[cpWriteHandler] Error: buffer_can_read fallo\n");
-        return;
+    /* Si hay algo para leer, se lo envio al cliente */
+    if(buffer_can_read(cpc->writeBuffer)){
+        size_t bytesLeft;
+        uint8_t * readPtr = buffer_read_ptr(cpc->writeBuffer, &bytesLeft);
+
+        int bytesSent = send(cpc->fd, readPtr, bytesLeft, 0);
+        if(bytesSent <= 0){
+            printf("[cpWriteHandler] Error/Closed: bytesSent <= 0\n");
+            freeControlProtConn(cpc, key->s);
+            return;
+        }
+
+        buffer_read_adv(cpc->writeBuffer, bytesSent);
+
+        /* Si no tengo nada mas que enviarle al cliente, apago el interes 
+            de escritura */
+        //TODO: Funcara?
+        if(bytesSent == bytesLeft){
+            cpc->interests &= !OP_WRITE;
+            selector_set_interest_key(key, cpc->interests);
+        }
     }
 
-    size_t bytesLeft;
-    uint8_t * readPtr = buffer_read_ptr(cpc->writeBuffer, &bytesLeft);
-
-    int bytesSent = send(cpc->fd, readPtr, bytesLeft, 0);
-    if(bytesSent <= 0){
-        //TODO: Error o conexion cerrada. Manejar
-        printf("[cpWriteHandler] Error: bytesSent <= 0\n");
-        return;
-    }
-
-    buffer_read_adv(cpc->writeBuffer, bytesSent);
 }
 
 /* Escribe en el readBuffer lo que me haya enviado el cliente */
 void cpReadHandler(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
 
-    if(!buffer_can_write(cpc->readBuffer)){
-        // TODO: Buffer lleno. Manejar error
-        printf("[cpReadHandler] Error: buffer_can_write fallo\n");
-        return;
+    /* Solo recibo bytes del cliente si aun tengo espacio en el 
+       buffer de lectura. Si no, llamo al handler de lectura para 
+       que consuma los que pueda */
+    if(buffer_can_write(cpc->readBuffer)){
+        size_t bytesLeft;
+        uint8_t * readPtr = buffer_write_ptr(cpc->readBuffer, &bytesLeft);
+
+        int bytesRecv = recv(cpc->fd, readPtr, bytesLeft, 0);
+        if(bytesRecv <= 0){
+            printf("[cpReadHandler] Error/Closed: bytesRecv <= 0\n");
+            freeControlProtConn(cpc, key->s);
+            return;
+        }
+
+        buffer_write_adv(cpc->readBuffer, bytesRecv);
     }
-
-    size_t bytesLeft;
-    uint8_t * readPtr = buffer_write_ptr(cpc->readBuffer, &bytesLeft);
-
-    int bytesRecv = recv(cpc->fd, readPtr, bytesLeft, MSG_DONTWAIT);
-    if(bytesRecv <= 0){
-        //TODO: Error o conexion cerrada. Manejar
-        printf("[cpReadHandler] Error: bytesRecv <= 0\n");
-        return;
-    }
-
-    buffer_write_adv(cpc->readBuffer, bytesRecv);
 
     /* Llamo a la funcion de lectura de este estado. 
         Actualizo el estado actual */
     cpc->currentState = stm_handler_read(&cpc->connStm, key);
+    //TODO: Validar CP_ERROR
 }
 
+/* Libera los recursos de esta conexion */
 void cpCloseHandler(struct selector_key * key){
     freeControlProtConn((controlProtConn *) key->data, key->s);
 }
@@ -173,39 +186,56 @@ void cpCloseHandler(struct selector_key * key){
 
 /* ================== Handlers para cada estado de la STM ======================== */
 
-//TODO: Deberia usar el buffer?
+/* Escribe en el buffer de escritura el mensaje de HELLO del protocolo*/
 static controlProtStmState helloWrite(struct selector_key * key){
     printf("[CP_HELLO]\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
 
-    if(!buffer_can_write(cpc->writeBuffer)){
-        //TODO: Manejar error
-        printf("[CP_HELLO] Error: !buffer_can_write\n");
+    /* Si ya envie el HELLO al cliente, paso al estado de CP_AUTH */
+    if(cpc->helloWritten && !buffer_can_read(cpc->writeBuffer)){
+        /* TODO: cpc->interests = OP_READ;
+        selector_set_interest_key(key, cpc->interests); */
+        return CP_AUTH;
     }
 
-    int verLen = strlen(CONTROL_PROT_VERSION);
-    int totalLen = verLen + 3; // STATUS = 1  | HAS_DATA = 1 | DATA\n
-    
-    char * helloMsg = calloc(verLen + 3, sizeof(char));
-    sprintf(helloMsg, "%c%c%s\n", STATUS_SUCCESS, 1, CONTROL_PROT_VERSION);
+    /* Si no envie el HELLO, lo pongo en el buffer de escritura */
+    if(!cpc->helloWritten) {
+        /* En el estado HELLO, el buffer de escritura deberia estar vacio */
+        if(!buffer_can_write(cpc->writeBuffer)){
+            printf("[CP_HELLO] Error: !buffer_can_write\n");
+            return CP_ERROR;
+        }
+        /*
+            +--------+----------+-----------+
+            | STATUS | HAS_DATA |   DATA    |
+            +--------+----------+-----------+
+            | '1'    |        1 | <version> |
+            +--------+----------+-----------+
+        */
+        int verLen = strlen(CONTROL_PROT_VERSION);
+        int totalLen = verLen + 3; // STATUS = 1  | HAS_DATA = 1 | DATA\n
+        
+        char * helloMsg = calloc(verLen + 3, sizeof(char));
+        sprintf(helloMsg, "%c%c%s\n", STATUS_SUCCESS, 1, CONTROL_PROT_VERSION);
 
-    size_t maxWrite;
-    uint8_t * bufPtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
+        size_t maxWrite;
+        uint8_t * bufPtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
 
-    if(totalLen > maxWrite){
-        //TODO: Manejar error
-        //return CP_ERROR;
+        /* En el estado HELLO, el buffer de escritura deberia estar vacio */
+        if(totalLen > maxWrite){
+            return CP_ERROR;
+        }
+
+        memcpy(bufPtr, helloMsg, totalLen);
+        buffer_write_adv(cpc->writeBuffer, totalLen);
+
+        free(helloMsg);
+
+        cpc->helloWritten = true;
     }
 
-    memcpy(bufPtr, helloMsg, totalLen);
-    buffer_write_adv(cpc->writeBuffer, totalLen);
-
-    free(helloMsg);
-
-    //TODO: Necesario?
-    cpc->interests = OP_READ;
-    selector_set_interest_key(key, cpc->interests);
-    return CP_AUTH;
+    /* Sigoe en CP_HELLO hasta haber enviado el HELLO */
+    return CP_HELLO;
 }
 
 /* Lee la contrasenia que envio el usuario y la parsea a una estructura*/

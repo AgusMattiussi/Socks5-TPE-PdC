@@ -74,7 +74,7 @@ typedef struct controlProtConn {
 
     //TODO: Deberia ser una lista?
     //struct controlProtConn * nextConn;
-
+    bool helloWritten;
 } controlProtConn;
 
 controlProtConn * newControlProtConn(int fd);

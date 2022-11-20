@@ -155,7 +155,7 @@ void getMetrics(cpCommandParser * parser, char * answer){
 
     //TODO: Sacar el \0
 
-   printf(answer);
+   printf("%s", answer);
    return;
 }
 
