@@ -127,13 +127,11 @@ enum req_state req_parse_full(struct req_parser * parser, buffer * buff){
     return parser->state;
 }
 
-enum req_state mng_req_parse_full(struct req_parser * parser, buffer * buff){
-    printf("acá tenemos que parsear el request\n");
-    return REQ_DONE;
-}
-
-enum socks_state errno_to_req_response_state(const int e) {
+enum res_state 
+errno_to_req_response_state(const int e) {
     switch (e) {
+        case 0:
+            return RES_SUCCESS;
         case ECONNREFUSED:
             return RES_CONN_REFUSED;
         case EHOSTUNREACH:

@@ -4,9 +4,8 @@
 #define SRC 1
 #define BUFF_SIZE 2048
 
-
 /*----------------------
- |  Connection functions
+ |  Helping functions
  -----------------------*/
 
 static int 
@@ -25,13 +24,17 @@ check_buff_and_send(buffer * buff_ptr, int socket){
     size_t n_available;
     uint8_t * read_ptr = buffer_read_ptr(buff_ptr, &n_available);
     ssize_t n_sent = send(socket, read_ptr, n_available, 0); //TODO: Flags?
-    if(n_sent == -1){
-        LogError("Error sending bytes to client socket.");
-        return -1;
-    }
+    
+    if(n_sent == -1){ return -1; }
     buffer_read_adv(buff_ptr, n_sent);
     return n_sent;
 }
+
+
+/*----------------------
+ |  Connection functions
+ -----------------------*/
+
 
 void conn_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
@@ -177,8 +180,20 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
     uint8_t * addr_ptr = NULL; 
     enum req_atyp addr_type = parser->type;
 
-    size_t length;
-    if(addr_type == IPv4){
+    size_t length = addr_type == IPv4? IPv4_BYTES:
+                    (addr_type == IPv6)? IPv6_BYTES:
+                    (addr_type == FQDN)? strlen((char *)parser->addr.fqdn):
+                    -1;
+    addr_ptr = addr_type == IPv4? (uint8_t *)&(parser->addr.ipv4.sin_addr):
+                    (addr_type == IPv6)? parser->addr.ipv6.sin6_addr.s6_addr:
+                    (addr_type == FQDN)? parser->addr.fqdn:
+                    NULL;
+    if(length == -1 || addr_ptr == NULL){
+        LogError("Error detecting address type.");
+        return -1;
+    }
+
+    /*if(addr_type == IPv4){
         length = IPv4_BYTES;
         addr_ptr = (uint8_t *)&(parser->addr.ipv4.sin_addr);
     }
@@ -193,11 +208,14 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
     else{
         LogError("Address type not recognized\n");
         return -1;
-    }  
+    }*/
+
     size_t space_needed = length + FIXED_RES_BYTES + (parser->type==FQDN);
-    if (n_bytes < space_needed || addr_ptr == NULL) {
+    if (n_bytes < space_needed) {
+        LogError("Insufficient space to create response");
         return -1;
     }
+
     *buff_ptr++ = SOCKS_VERSION;
     *buff_ptr++ = parser->state;
     *buff_ptr++ = 0x00;
@@ -205,6 +223,7 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
     if (addr_type == FQDN) {
         *buff_ptr++ = length;
     }
+
     strncpy((char *)buff_ptr, (char *)addr_ptr, length);
     buff_ptr += length;
     uint8_t * port_ptr = (uint8_t *)&(parser->port);
@@ -283,7 +302,9 @@ static void *
 req_resolve_thread(void * arg){
     struct selector_key * aux_key = (struct selector_key *) arg; 
     socks_conn_model * connection = (socks_conn_model *)aux_key->data;
+
     pthread_detach(pthread_self());
+    
     char aux_buff[7];
     snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(connection->parsers->req_parser->port));
     int ret_getaddrinfo = -1;
@@ -622,11 +643,6 @@ copy_write(struct selector_key * key) {
     return COPY;
 }
 
-static void 
-req_connect_init(){
-//    printf("Estoy en estado REQ CONNECT\n");
-}
-
 static const struct state_definition states[] = {
     /*{
         .state = HELLO_READ,
@@ -667,7 +683,6 @@ static const struct state_definition states[] = {
     },
     {
         .state = REQ_CONNECT,
-        .on_arrival = req_connect_init,
         .on_write_ready = req_connect,
     },
     {
@@ -684,8 +699,8 @@ static const struct state_definition states[] = {
     }
 };
 
-socks_conn_model * new_socks_conn() {
-
+socks_conn_model * 
+new_socks_conn() {
     socks_conn_model * socks = malloc(sizeof(struct socks_conn_model));
     if(socks == NULL) { 
         perror("error:");
