@@ -10,13 +10,13 @@ static void noDataStatusSuccessAnswer(char * answer){
 
 static void statusFailedAnswer(char * answer, controlProtErrorCode errorCode){
     answer = calloc(4, sizeof(char)); 
-    sprintf(answer, "%c%c%c\n", STATUS_ERROR, 1, (char) errorCode);
+    sprintf(answer, "%c%c%c\n", STATUS_ERROR, 1, errorCode);
 }
 
 void addProxyUser(cpCommandParser * parser, char * answer){
     char * user, * password;
 
-    if(parser->hasData == 0){
+    if(parser->hasData == 0) {
         statusFailedAnswer(answer, CPERROR_COMMAND_NEEDS_DATA);
         return;
     }
@@ -78,4 +78,24 @@ void changePassword(cpCommandParser * parser, char * answer){
 
     noDataStatusSuccessAnswer(answer);
     return;
+}
+
+static void switchPassDissectors(cpCommandParser * parser, char * answer, unsigned value){
+    if(parser->hasData == 1){
+        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
+        return;
+    }
+
+    /* TODO: Cambiar variable global de password dissectors */
+
+    noDataStatusSuccessAnswer(answer);
+    return;
+}
+
+void turnOnPassDissectors(cpCommandParser * parser, char * answer){
+    switchPassDissectors(parser, answer, ON);
+}
+
+void turnOffPassDissectors(cpCommandParser * parser, char * answer){
+    switchPassDissectors(parser, answer, OFF);
 }

@@ -23,6 +23,9 @@
 #define TOKEN_DELIMITER ";"
 #define LINE_DELIMITER "\n"
 
+#define ON 1
+#define OFF 0
+
 typedef enum controlProtStmState {
     CP_HELLO,
     CP_AUTH,
@@ -32,13 +35,14 @@ typedef enum controlProtStmState {
 } controlProtStmState;
 
 typedef enum controlProtStatus{
-    STATUS_ERROR = 0,
+    STATUS_ERROR = '0',
     STATUS_SUCCESS
 } controlProtStatus;
 
 typedef enum controlProtErrorCode{
-    CPERROR_INVALID_PASSWORD,
+    CPERROR_INVALID_PASSWORD = '0',
     CPERROR_COMMAND_NEEDS_DATA,
+    CPERROR_NO_DATA_COMMAND,
     CPERROR_INVALID_FORMAT
 } controlProtErrorCode;
 

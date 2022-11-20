@@ -8,7 +8,8 @@
 
 typedef enum cpCommandCode {
     CP_NO_COMMAND,
-    CP_ADD_USER = '1',      // HAS_DATA = 1
+    CP_AUTHENTICATION = '0', // HAS_DATA = 0
+    CP_ADD_USER,            // HAS_DATA = 1
     CP_REM_USER,            // HAS_DATA = 1
     CP_CHANGE_PASS,         // HAS_DATA = 1
     CP_LIST_USERS,          // HAS_DATA = 0

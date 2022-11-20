@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "cpCommandParser.h"
+
 #define AUTH_COMMAND 1
 #define MAX_PASS_LEN 256  // El '\n' seria el byte numero 256
 

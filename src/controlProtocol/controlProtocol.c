@@ -363,10 +363,10 @@ static controlProtStmState executeWrite(struct selector_key * key){
             /* code */
             break;
         case CP_DISSECTOR_ON:
-            /* code */
+            turnOnPassDissectors(parser, answer);
             break;
         case CP_DISSECTOR_OFF:
-            /* code */
+            turnOffPassDissectors(parser, answer);
             break;
         default:
             break;
