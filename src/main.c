@@ -43,7 +43,7 @@ static bool done = false;
 
 static void
 sigterm_handler(const int signal) {
-    LogDebug("Exiting...");
+    printf("Exiting...");
     done = true;
     cleanup();
     exit(0);
