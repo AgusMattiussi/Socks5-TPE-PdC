@@ -17,7 +17,6 @@
 #include "selector.h"
 #include "stm.h"
 #include "../socks5/socks5.h"
-#include "../mng/mng.h"
 #include "conn_handler.h"
 #include "../controlProtocol/include/controlProtocol.h"
 

@@ -19,31 +19,25 @@ const struct fd_handler passive_socket_fd_handler = {
 
 const struct fd_handler passive_socket_fd_mng_handler = {passive_cp_socket_handler, 0, 0, 0};
 
-const struct fd_handler mng_connection_actions_handler = { 
-    mng_connection_read, mng_connection_write,
-    mng_connection_block, mng_connection_close
+
+const struct fd_handler conn_actions_handler = { 
+    .handle_read = socks_conn_read,
+    .handle_write = socks_conn_write,
+    .handle_block = socks_conn_block,
+    .handle_close = socks_conn_close
 };
 
-const struct fd_handler connection_actions_handler = { 
-    .handle_read = socks_connection_read,
-    .handle_write = socks_connection_write,
-    .handle_block = socks_connection_block,
-    .handle_close = socks_connection_close
-};
-
-const struct fd_handler * get_mng_conn_actions_handler() {
-    return &mng_connection_actions_handler;
-}
 
 const struct fd_handler * get_conn_actions_handler() {
-    return &connection_actions_handler;
+    return &conn_actions_handler;
 }
 
-void 
-close_socks_conn(socks_conn_model * connection) {
 
-    int client_socket = connection->cli_conn->socket;
-    int server_socket = connection->src_conn->socket;
+void 
+close_socks_conn(socks_conn_model * socks) {
+
+    int client_socket = socks->cli_conn->socket;
+    int server_socket = socks->src_conn->socket;
 
     if (server_socket != -1) {
         selector_unregister_fd(selector, server_socket, false);
@@ -54,18 +48,18 @@ close_socks_conn(socks_conn_model * connection) {
         selector_unregister_fd(selector, client_socket, false);
         close(client_socket);
     }
-    if (connection->resolved_addr != NULL) {
-        freeaddrinfo(connection->resolved_addr);
+    if (socks->resolved_addr != NULL) {
+        freeaddrinfo(socks->resolved_addr);
     }
 
     free_curr_user();
 
-    buffer_reset(&connection->buffers->read_buff);
-    buffer_reset(&connection->buffers->write_buff);
+    buffer_reset(&socks->buffers->read_buff);
+    buffer_reset(&socks->buffers->write_buff);
 
-    free(connection->buffers->aux_read_buff);
-    free(connection->buffers->aux_write_buff);
-    free(connection);
+    free(socks->buffers->aux_read_buff);
+    free(socks->buffers->aux_write_buff);
+    free(socks);
 }
 
 
@@ -140,7 +134,7 @@ static void passive_socks_socket_handler(struct selector_key * key){
     }
     
     selector_status sel_register_ret = selector_register(selector, socks->cli_conn->socket,
-        &connection_actions_handler, OP_READ, socks);
+        &conn_actions_handler, OP_READ, socks);
     if(sel_register_ret != SELECTOR_SUCCESS){
         LogError("Error in selector_fregister call: %s",
         selector_error(sel_register_ret));
@@ -226,14 +220,11 @@ finally:
     return ret_fd;
 }
 
-static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
-
 
 void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * mng_port){
     printf("Entro a start server\n");
 
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1, fd_mng_ipv4 = -1, fd_mng_ipv6 = -1;
-    int ret_code = -1;
 
     fd_socks_ipv4 = start_socket(socks_addr, socks_port, &passive_socket_fd_handler, AF_UNSPEC);
     if(fd_socks_ipv4 == -1){ 

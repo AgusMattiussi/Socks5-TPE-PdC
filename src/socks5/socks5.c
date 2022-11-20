@@ -691,7 +691,7 @@ socks_conn_model * new_socks_conn() {
     socks_conn_model * socks = malloc(sizeof(struct socks_conn_model));
     if(socks == NULL) { 
         perror("error:");
-        return; 
+        return NULL; 
     }
     memset(socks, 0x00, sizeof(*socks));
 
