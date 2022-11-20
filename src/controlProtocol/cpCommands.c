@@ -2,6 +2,7 @@
 
 static void noDataStatusSuccessAnswer(char * answer);
 static void statusFailedAnswer(char * answer, controlProtErrorCode errorCode);
+static void switchPassDissectors(cpCommandParser * parser, char * answer, bool value);
 
 static void noDataStatusSuccessAnswer(char * answer){
     answer = calloc(3, sizeof(char)); 
@@ -80,24 +81,24 @@ void changePassword(cpCommandParser * parser, char * answer){
     return;
 }
 
-static void switchPassDissectors(cpCommandParser * parser, char * answer, unsigned value){
+static void switchPassDissectors(cpCommandParser * parser, char * answer, bool value){
     if(parser->hasData == 1){
         statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
         return;
     }
 
-    /* TODO: Cambiar variable global de password dissectors */
+    set_sniffer_state(value);   
 
     noDataStatusSuccessAnswer(answer);
     return;
 }
 
 void turnOnPassDissectors(cpCommandParser * parser, char * answer){
-    switchPassDissectors(parser, answer, ON);
+    switchPassDissectors(parser, answer, true);
 }
 
 void turnOffPassDissectors(cpCommandParser * parser, char * answer){
-    switchPassDissectors(parser, answer, OFF);
+    switchPassDissectors(parser, answer, false);
 }
 
 void getSniffedUsersList(cpCommandParser * parser, char * answer){
@@ -134,3 +135,4 @@ void getMetrics(cpCommandParser * parser, char * answer){
    answer[1] = 1;   // HAS_DATA = 1
    return;
 }
+

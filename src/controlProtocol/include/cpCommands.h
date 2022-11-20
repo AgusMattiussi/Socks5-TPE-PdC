@@ -1,7 +1,10 @@
 #ifndef CP_COMMANDS_H
 #define CP_COMMANDS_H
 
+#include <stdbool.h>
+
 #include "controlProtocol.h"
+#include "../../sniffer/pop3_sniffer.h"
 
 void addProxyUser(cpCommandParser * parser, char * answer);
 void removeProxyUser(cpCommandParser * parser, char * answer);
