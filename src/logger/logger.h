@@ -15,6 +15,14 @@
 #define LOGGER_HEADER
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdbool.h>
+
+#include "../socks5/socks5.h"
+#include "../users/user_mgmt.h"
+#include "../sniffer/pop3_sniffer.h"
+#include "../include/netutils.h"
 
 void setLogOn();
 void setLogOff();

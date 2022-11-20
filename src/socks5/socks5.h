@@ -20,7 +20,10 @@
 #include "../parsers/conn_parser.h"
 #include "../parsers/auth_parser.h"
 #include "../parsers/req_parser.h"
-#include "../users/user_mgmt.h" 
+#include "../users/user_mgmt.h"
+#include "../logger/logger.h"
+#include "../include/metrics.h"
+#include "../sniffer/pop3_sniffer.h"
 
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
@@ -71,7 +74,7 @@ struct parsers_t{
     struct req_parser * req_parser;
 };
 
-typedef struct socks_conn_model{
+typedef struct socks_conn_model {
 
     struct std_conn_model * cli_conn;
     struct std_conn_model * src_conn;
@@ -84,7 +87,9 @@ typedef struct socks_conn_model{
     struct addrinfo * curr_addr;
 
     struct state_machine stm;
-    
+
+    struct pop3_parser * pop3_parser;
+
     struct copy_model_t cli_copy;
     struct copy_model_t src_copy;
 
@@ -95,5 +100,10 @@ typedef struct socks_conn_model{
 struct state_definition * socks5_all_states();
 uint32_t socks_get_buf_size();
 
+void  close_socks_conn(socks_conn_model * connection);
+
+void pass_information(socks_conn_model * connection);
+
+void conn_information(socks_conn_model * connection);
 
 #endif
