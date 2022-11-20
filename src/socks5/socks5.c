@@ -420,9 +420,7 @@ req_connect(struct selector_key * key) {
     if(getsockopt_ret == 0){
         if(optval != 0){
             if (parser->type == FQDN) {
-                connection->guardian = true;
-                selector_unregister_fd(key->s, connection->src_conn->socket);
-                connection->guardian = false;
+                selector_unregister_fd(key->s, connection->src_conn->socket, false);
                 close(connection->src_conn->socket);
                 return req_resolve(key);
             }

@@ -173,7 +173,8 @@ selector_register(fd_selector        s,
  */
 selector_status
 selector_unregister_fd(fd_selector   s,
-                       const int     fd);
+                       const int     fd,
+                       const bool    use_close);
 
 /** permite cambiar los intereses para un file descriptor */
 selector_status

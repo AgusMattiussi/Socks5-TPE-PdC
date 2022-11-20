@@ -29,21 +29,17 @@ get_conn_actions_handler() {
 
 void 
 close_socks_conn(socks_conn_model * connection) {
-    if(connection->guardian){
-        return;
-    }
-    connection->guardian = true;
 
     int client_socket = connection->cli_conn->socket;
     int server_socket = connection->src_conn->socket;
 
     if (server_socket != -1) {
-        selector_unregister_fd(selector, server_socket);
+        selector_unregister_fd(selector, server_socket, false);
         close(server_socket);
     }
     if (client_socket != -1) {
         remove_current_socks_connection();    
-        selector_unregister_fd(selector, client_socket);
+        selector_unregister_fd(selector, client_socket, false);
         close(client_socket);
     }
     if (connection->resolved_addr != NULL) {

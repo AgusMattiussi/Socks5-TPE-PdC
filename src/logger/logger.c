@@ -5,6 +5,7 @@
 #include "../socks5/socks5.h"
 #include "../users/user_mgmt.h"
 #include "../logger/logger.h"
+#include "../include/netutils.h"
 
 /**
  * Implementación de "logger.h".
@@ -121,9 +122,12 @@ conn_information(socks_conn_model * connection){
 				buff, 
 				parser->type == IPv4 ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN);
 	}
-	printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%d\t\n", time_buff, username, reg_type, 
+	char auxBuff[10];
+	size_t buffSize = 10;
+	printf("%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t\n", time_buff, username, reg_type, 
 			getIpAddress(&(connection->cli_conn->addr)),
 			getPort(&(connection->cli_conn->addr)), 
+			//sockaddr_to_human(auxBuff, buffSize, &(connection->cli_conn->addr)),
 			parser->type==FQDN?(char*)parser->addr.fqdn:buff,
 			parser->port, parser->res_parser.state);
 	fflush(stdout);

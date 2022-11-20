@@ -127,7 +127,7 @@ START_TEST (test_selector_register_unregister_register) {
     ck_assert_uint_eq(SELECTOR_SUCCESS,
                       selector_register(s, fd, &h, 0, data_mark));
     ck_assert_uint_eq(SELECTOR_SUCCESS,
-                      selector_unregister_fd(s, fd));
+                      selector_unregister_fd(s, fd, true));
 
     const struct item *item = s->fds + fd;
     ck_assert_int_eq (0,          s->max_fd);
