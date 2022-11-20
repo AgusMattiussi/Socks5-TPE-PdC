@@ -50,8 +50,8 @@ static void onArrival(controlProtStmState state, struct selector_key *key){
 
 static void onDeparture(controlProtStmState state, struct selector_key *key){
     printf("[CP_AUTH/onDeparture] Sali de CP_AUTH\n");
-    controlProtConn * cpc = (controlProtConn *) key->data;
-    initCpAuthParser(&cpc->authParser);
+    /* controlProtConn * cpc = (controlProtConn *) key->data;
+    initCpAuthParser(&cpc->authParser); */
 }
 
 static void initStm(struct state_machine * stm){
@@ -64,6 +64,9 @@ static void initStm(struct state_machine * stm){
 
 static unsigned cpError(struct selector_key * key){
     printf("\nERROR CP_ERROR. Reiniciando...\n");
+    controlProtConn * cpc = (controlProtConn *) key->data;
+    initCpAuthParser(&cpc->authParser);
+    initCpCommandParser(&cpc->commandParser);
     return CP_HELLO;
 }
 
@@ -76,14 +79,16 @@ controlProtConn * newControlProtConn(int fd){
         initStm(&new->connStm);
 
         new->readBuffer = malloc(sizeof(buffer));
+        if(new->readBuffer == NULL)
+            return NULL;
+
         new->writeBuffer = malloc(sizeof(buffer));
-        if(new->readBuffer == NULL || new->writeBuffer == NULL){
-            //TODO: Manejar Error
-        }
-        //TODO: Cambiar esto al onArrival?
+        if(new->writeBuffer == NULL)
+            return NULL;
+        
         initCpAuthParser(&new->authParser);
         initCpCommandParser(&new->commandParser);
-        buffer_init(new->readBuffer, BUFFER_SIZE, new->re5adBufferData);
+        buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
         new->fd = fd;
