@@ -2,6 +2,7 @@
 
 #define CLI 0
 #define SRC 1
+#define BUFF_SIZE 2048
 
 
 /*----------------------
@@ -685,7 +686,44 @@ static const struct state_definition states[] = {
     }
 };
 
-struct state_definition * socks5_all_states(){
-    return states;
+socks_conn_model * new_socks_conn() {
+
+    socks_conn_model * socks = malloc(sizeof(struct socks_conn_model));
+    if(socks == NULL) { 
+        perror("error:");
+        return; 
+    }
+    memset(socks, 0x00, sizeof(*socks));
+
+    socks->cli_conn = malloc(sizeof(struct std_conn_model));
+    socks->src_conn = malloc(sizeof(struct std_conn_model));
+    memset(socks->cli_conn, 0x00, sizeof(*(socks->cli_conn)));
+    memset(socks->src_conn, 0x00, sizeof(*(socks->src_conn)));
+    socks->cli_conn->interests = OP_READ;
+    socks->src_conn->interests = OP_NOOP;
+
+    socks->parsers = malloc(sizeof(struct parsers_t));
+    memset(socks->parsers, 0x00, sizeof(*(socks->parsers)));
+
+    socks->parsers->connect_parser = malloc(sizeof(struct conn_parser));
+    socks->parsers->auth_parser = malloc(sizeof(struct auth_parser));
+    socks->parsers->req_parser = malloc(sizeof(struct req_parser));
+    memset(socks->parsers->connect_parser, 0x00, sizeof(*(socks->parsers->connect_parser)));
+    memset(socks->parsers->auth_parser, 0x00, sizeof(*(socks->parsers->auth_parser)));
+    memset(socks->parsers->req_parser, 0x00, sizeof(*(socks->parsers->req_parser)));
+
+    socks->stm.initial = CONN_READ;
+    socks->stm.max_state = DONE;
+    socks->stm.states = states;
+    stm_init(&socks->stm);
+
+    socks->buffers = malloc(sizeof(struct buffers_t));
+    socks->buffers->aux_read_buff = malloc((uint32_t)BUFF_SIZE);
+    socks->buffers->aux_write_buff = malloc((uint32_t)BUFF_SIZE);
+
+    buffer_init(&socks->buffers->read_buff, BUFF_SIZE, socks->buffers->aux_read_buff);
+    buffer_init(&socks->buffers->write_buff, BUFF_SIZE, socks->buffers->aux_write_buff);
+
+    return socks;
 }
 

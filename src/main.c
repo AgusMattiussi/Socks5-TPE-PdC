@@ -74,16 +74,15 @@ start_selector(){
 
 int
 main(const int argc, char ** argv) {
+    
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT, sigterm_handler);
 
-    close(STDIN_FILENO);
-
     struct socks5args args;
     parse_args(argc, argv, &args);
+    close(STDIN_FILENO);
     start_metrics();
-    start_selector();
-
+    start_selector();   
 
     start_server(args.socks_addr, args.socks_port, args.mng_addr, args.mng_port);
 
