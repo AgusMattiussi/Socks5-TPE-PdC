@@ -4,12 +4,10 @@
 #include "stm.h"
 #include "../socks5/socks5.h"
 #include "selector.h"
-//FIXME: #include "../parsers/conn_parser.h"
 
 /*
-
-Works as a helper function for the STM  
-
+            CONN_HANDLER.h
+Implements handlers for socks incoming connections
 */
 
 

@@ -297,7 +297,7 @@ selector_destroy(fd_selector s) {
         if(s->fds != NULL) {
             for(size_t i = 0; i < s->fd_size ; i++) {
                 if(ITEM_USED(s->fds + i)) {
-                    selector_unregister_fd(s, i);
+                    selector_unregister_fd(s, i, true);
                 }
             }
             pthread_mutex_destroy(&s->resolution_mutex);
@@ -360,7 +360,8 @@ finally:
 
 selector_status
 selector_unregister_fd(fd_selector       s,
-                       const int         fd) {
+                       const int         fd,
+                       const bool use_close) {
     selector_status ret = SELECTOR_SUCCESS;
 
     if(NULL == s || INVALID_FD(fd)) {
@@ -380,7 +381,7 @@ selector_unregister_fd(fd_selector       s,
             .fd   = item->fd,
             .data = item->data,
         };
-        item->handler->handle_close(&key);
+        if(use_close) {item->handler->handle_close(&key);}
     }
 
     item->interest = OP_NOOP;

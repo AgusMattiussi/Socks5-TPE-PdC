@@ -15,7 +15,6 @@ stm_init(struct state_machine *stm) {
             abort();
         }
     }
-
     if(stm->initial < stm->max_state) {
         stm->current = NULL;
     } else {
