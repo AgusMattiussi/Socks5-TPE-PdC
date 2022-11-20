@@ -194,7 +194,7 @@ char edit_password(char * pass, int fd) {
 char list_users(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_LIST_USERS;
-    to_send[1] = NO_DATA;
+    to_send[1] = HAS_NOT_DATA;
     send(fd, to_send, 2, 0);
 
     return parse_users_message(fd, NULL);
@@ -203,7 +203,7 @@ char list_users(int fd) {
 char obtain_metrics(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_OBTAIN_METRICS;
-    to_send[1] = NO_DATA;
+    to_send[1] = HAS_NOT_DATA;
     send(fd, to_send, 2, 0);
     return parse_metrics_message(fd);
 }
@@ -211,7 +211,7 @@ char obtain_metrics(int fd) {
 char dissector_on(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_DISSECTOR_ON;
-    to_send[1] = NO_DATA;
+    to_send[1] = HAS_NOT_DATA;
     send(fd, to_send, 2, 0);
 
     return receive_simple_response(fd);
@@ -220,7 +220,7 @@ char dissector_on(int fd) {
 char dissector_off(int fd) {
     char to_send[MAXLEN] = {0};
     to_send[0] = COMMAND_DISSECTOR_OFF;
-    to_send[1] = NO_DATA;
+    to_send[1] = HAS_NOT_DATA;
     send(fd, to_send, 2, 0);
 
     return receive_simple_response(fd);
