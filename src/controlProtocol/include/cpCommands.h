@@ -5,6 +5,7 @@
 
 #include "controlProtocol.h"
 #include "../../sniffer/pop3_sniffer.h"
+#include "../../users/user_mgmt.h"
 
 void addProxyUser(cpCommandParser * parser, char * answer);
 void removeProxyUser(cpCommandParser * parser, char * answer);

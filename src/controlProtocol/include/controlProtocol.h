@@ -43,7 +43,11 @@ typedef enum controlProtErrorCode{
     CPERROR_INVALID_PASSWORD = '0',
     CPERROR_COMMAND_NEEDS_DATA,
     CPERROR_NO_DATA_COMMAND,
-    CPERROR_INVALID_FORMAT
+    CPERROR_INVALID_FORMAT,
+    CPERROR_INEXISTING_USER,
+    CPERROR_ALREADY_EXISTS,
+    CPERROR_USER_LIMIT,
+    CPERROR_GENERAL_ERROR     /* Encapsulamiento de los errores de memoria */
 } controlProtErrorCode;
 
 
