@@ -570,12 +570,8 @@ copy_read(struct selector_key * key) {
 
             if(connection->pop3_parser != NULL && sniffer_is_on()){
                 if(pop3_parse(connection->pop3_parser, copy->write_buff) == POP3_DONE){
-                    printf("\nParseo exitoso...\n");
-                    printf("-----------------\n");
-                    printf("USER: %s\n", connection->pop3_parser->user);
-                    printf("PASS: %s\n", connection->pop3_parser->pass);
                     //TODO: loggin function to print pop3 info
-                    //pass_information(connection);
+                    pass_information(connection);
                 }
             }
 
