@@ -83,9 +83,9 @@ main(const int argc, char ** argv) {
     parse_args(argc, argv, &args);
     start_metrics();
     start_selector();
-    start_server(args.socks_addr, args.socks_port);
 
-    int returnCode = start_server(args.socks_addr, args.socks_port, args.mng_addr, args.mng_port);
 
-    return returnCode;
+    start_server(args.socks_addr, args.socks_port, args.mng_addr, args.mng_port);
+
+    return 0;
 }

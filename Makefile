@@ -3,6 +3,7 @@ CCFLAGS_FINAL=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -
 CCFLAGS=-Wall -g -pthread
 AS= -fsanitize=address
 SOURCES=$(wildcard src/*.c) $(wildcard src/parsers/*.c) $(wildcard src/socks5/*.c) $(wildcard src/users/*.c) $(wildcard src/controlProtocol/*.c) $(wildcard src/controlProtocol/parsers/*.c) $(wildcard src/mng/*.c)  $(wildcard src/logger/*.c) $(wildcard src/sniffer/*.c)
+SOURCES_CLI=$(wildcard src/client/*.c)
 BIN_DIR=./bin
 BIN_FILE=./bin/main
 BIN_FILE_CLI=./bin/client
