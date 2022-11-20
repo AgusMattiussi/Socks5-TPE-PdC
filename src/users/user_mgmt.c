@@ -1,6 +1,7 @@
 #include "user_mgmt.h"
 #include "../include/args.h"
 #include <stdio.h>
+#include "../logger/logger.h"
 
 #define MAX_USERS 10
 
@@ -53,11 +54,31 @@ process_authentication_request(char * username, char * password){
 
 uint8_t
 user_exists(char * username, char * password){
+    if(username == NULL || password == NULL){
+        LogError("Username or password are invalid.");
+        goto finally;
+    }
     for(int i = 0; i < n_users; i++){
         if(valid_credentials(username, password, users[i]->name, users[i]->pass)){
-            return 0;
+            return i;
         }
     }
+finally:
+    return -1;
+}
+
+uint8_t
+user_exists_by_username(char * username){
+    if(username == NULL){
+        LogError("Username is invalid.");
+        goto finally;
+    }
+    for(int i = 0; i < n_users; i++){
+        if(strcmp(username, users[i]->name) == 0){
+            return i;
+        }
+    }
+finally:
     return -1;
 }
 
@@ -68,7 +89,7 @@ add_user(user_t * user){
         free(user);
         return ADD_MAX_USERS;
     }
-    if(user_exists(user->name, user->pass) == 0){
+    if(user_exists_by_username(user->name) != -1){
         fprintf(stdout, "Usuario ya existe.\n");
         free(user);
         return ADD_USER_EXISTS;
@@ -90,4 +111,27 @@ add_user(user_t * user){
     n_users++;
     require_auth = true;
     return ADD_OK;
+}
+
+uint8_t 
+remove_user(char * username){
+    int pos = user_exists_by_username(username);
+    if(pos == -1){LogError("User does not exist."); return -1;}
+    struct user_t * to_delete = users[pos];
+    users[pos] = users[n_users-1];
+    free(to_delete->name);
+    free(to_delete->pass);
+    free(to_delete);
+    n_users--;
+    return 0;
+}
+
+uint8_t 
+change_password(char * username, char * new_password){
+    int pos = user_exists_by_username(username);
+    if(pos == -1){LogError("User does not exist."); return -1;}
+    free(users[pos]->pass);
+    users[pos]->pass = malloc(strlen(new_password + 1));
+    strcpy(users[pos]->pass, new_password);
+    return 0;
 }

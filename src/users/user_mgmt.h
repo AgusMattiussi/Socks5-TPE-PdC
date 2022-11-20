@@ -22,5 +22,7 @@ uint8_t get_total_curr_users();
 void free_curr_user();
 enum add_user_state add_user(user_t * user);
 bool needs_auth();
+uint8_t remove_user(char * username);
+uint8_t change_password(char * username, char * new_password);
 
 #endif
