@@ -75,3 +75,28 @@ conn_parse_full(struct conn_parser * parser, buffer * buff){
     }
     return parser->state;
 }
+
+enum conn_state mng_conn_parse_full(struct conn_parser * parser, buffer * buff){
+    printf("acá hay que parsear el hello\n");
+    // Take byte to byte and use helper function to pass between states
+    // We can use buffer functions directly to know when to stop reading
+    /*while(buffer_can_read(buff)){
+        uint8_t to_parse = buffer_read(buff);
+        conn_parse_byte(parser, to_parse);
+        if(parser->state == CONN_ERROR){
+            fprintf(stdout, "Error while parsing input.\n"); //Might be excesive
+            return CONN_ERROR;
+        }
+        else if(parser->state == CONN_DONE){
+            //For debugging purposes
+            fprintf(stdout, "Connection OK!\n");
+            return CONN_DONE;
+        }
+    }
+    if(parser->state != CONN_ERROR && parser->state != CONN_DONE){
+        //For debugging purposes
+        fprintf(stdout, "Shouldn't reach this state, but parsing went wrong with no aparent error?\n");
+    }
+    return parser->state;*/
+    return CONN_DONE;
+}

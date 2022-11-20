@@ -8,12 +8,24 @@
 static fd_selector selector;
 
 static void passive_socks_socket_handler(struct selector_key * key);
+static void passive_mng_socket_handler(struct selector_key * key);
+static void passive_cp_socket_handler(struct selector_key * key) ;
 
 const struct fd_handler passive_socket_fd_handler = {
     .handle_read = passive_socks_socket_handler, 
     .handle_write = 0, 
     .handle_block = 0, 
     .handle_close = 0};
+
+const struct fd_handler passive_socket_fd_handler = {passive_socks_socket_handler, 0, 0, 0};
+//TODO: Should this functions have a &? 
+
+const struct fd_handler passive_socket_fd_mng_handler = {passive_cp_socket_handler, 0, 0, 0};
+
+const struct fd_handler mng_connection_actions_handler = { 
+    mng_connection_read, mng_connection_write,
+    mng_connection_block, mng_connection_close
+};
 
 const struct fd_handler connection_actions_handler = { 
     .handle_read = socks_connection_read,
@@ -22,8 +34,11 @@ const struct fd_handler connection_actions_handler = {
     .handle_close = socks_connection_close
 };
 
-const struct fd_handler * 
-get_conn_actions_handler() {
+const struct fd_handler * get_mng_conn_actions_handler() {
+    return &mng_connection_actions_handler;
+}
+
+const struct fd_handler * get_conn_actions_handler() {
     return &connection_actions_handler;
 }
 
@@ -54,6 +69,136 @@ close_socks_conn(socks_conn_model * connection) {
     free(connection->buffers->aux_read_buff);
     free(connection->buffers->aux_write_buff);
     free(connection);
+}
+
+static void passive_mng_socket_handler(struct selector_key * key){
+    
+    printf("Entre al socket handler de MNG conexión entrante...\n");
+    mng_conn_model * connection = malloc(sizeof(struct mng_conn_model));
+    if(connection == NULL) { 
+        perror("error:");
+        return; 
+    }
+    memset(connection, 0x00, sizeof(*connection));
+    
+    connection->cli_conn = malloc(sizeof(struct std_conn_model));
+    memset(connection->cli_conn, 0x00, sizeof(*(connection->cli_conn)));
+
+    
+    connection->parsers = malloc(sizeof(struct parsers_t));
+    memset(connection->parsers, 0x00, sizeof(*(connection->parsers)));
+
+    connection->parsers->connect_parser = malloc(sizeof(struct conn_parser));
+    connection->parsers->auth_parser = malloc(sizeof(struct auth_parser));
+    connection->parsers->req_parser = malloc(sizeof(struct req_parser));
+    memset(connection->parsers->connect_parser, 0x00, sizeof(*(connection->parsers->connect_parser)));
+    memset(connection->parsers->auth_parser, 0x00, sizeof(*(connection->parsers->auth_parser)));
+    memset(connection->parsers->req_parser, 0x00, sizeof(*(connection->parsers->req_parser)));
+
+    printf("Inicializo buffers auxiliares\n");
+    connection->buffers = malloc(sizeof(struct buffers_t));
+    connection->buffers->aux_read_buff = malloc((uint32_t)BUFF_SIZE);
+    connection->buffers->aux_write_buff = malloc((uint32_t)BUFF_SIZE);
+
+    printf("Paso mallocs de inicialización de buffers\n");
+
+    buffer_init(&connection->buffers->read_buff, BUFF_SIZE, connection->buffers->aux_read_buff);
+    buffer_init(&connection->buffers->write_buff, BUFF_SIZE, connection->buffers->aux_write_buff);
+
+    printf("Inicialize buffers\n");
+    //State Machine parameter setting
+    connection->stm.initial = MNG_CONN_READ;
+    connection->stm.max_state = MNG_DONE;
+    connection->stm.states = mng_all_states();
+    stm_init(&connection->stm);
+    printf("Vuelvo de stm init\n");
+    connection->cli_conn->interests = OP_READ;
+    printf("Incialización de stm...\n");
+    //After setting up the configuration, we accept the connection
+    connection->cli_conn->addr_len = sizeof(connection->cli_conn->addr);
+    printf("Llegue hasta linea previa de accept\n");
+    connection->cli_conn->socket = accept(key->fd, (struct sockaddr *)&connection->cli_conn->addr,
+    &connection->cli_conn->addr_len);
+    printf("Pase el accept\n");
+    if(connection->cli_conn->socket == -1){
+        printf("Error in accept call of line 49 in passive_socks\n");
+        //TODO: close_socks5_connection(connection);
+        close_socks_conn(connection);
+        return;
+    }
+ 
+    int sel_ret = selector_fd_set_nio(connection->cli_conn->socket);
+    if(sel_ret == -1){
+        printf("Error in selector_fd_set_nio call of line 57 in passive_socks\n");
+        close_socks_conn(connection);
+        //TODO: close_socks5_connection(connection);
+        return;
+    }
+    
+    
+    selector_status sel_register_ret = selector_register(selector, connection->cli_conn->socket,
+    get_mng_conn_actions_handler(), OP_READ, connection);
+    if(sel_register_ret != SELECTOR_SUCCESS){
+        printf("Error in selector_fregister call of line 66 in passive_socks\n");
+        close_socks5_connection(connection);
+        //close_socks5_connection(connection);
+        return;
+    }
+    printf("Salgo de start socket aparentemente sin errores!\n");
+}
+
+
+static void dummyBlock(struct selector_key * key){
+    printf("\n DUMMY BLOCK\n");
+}
+
+static void dummyClose(struct selector_key * key){
+    printf("\n DUMMY CLOSE\n");
+}
+
+const fd_handler cpFdHandler = {
+    .handle_read = cpReadHandler,
+    .handle_write = cpWriteHandler,
+    .handle_block = dummyBlock,
+    .handle_close = dummyClose
+};
+
+
+static void passive_cp_socket_handler(struct selector_key * key) {
+    printf(" En passive_cp_socket_handler\n");
+    controlProtConn * new;
+    
+    /* Aceptamos la conexion entrante */
+    int clientFd = accept(key->fd, NULL, NULL);
+    if(clientFd < 0){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (accept)\n");
+        return;
+    }
+
+    /* Hacemos el socket no bloqueante */
+    if(selector_fd_set_nio(clientFd) == -1){
+        // TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (selector_fd_set_nio)\n");
+        return;
+    }
+
+    /* Inicializamos la estructura con los datos de esta conexion */
+    // TODO: Considerar aniadirlo a una lista?
+    new = newControlProtConn(clientFd);
+    if(new == NULL){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
+        return;
+    }
+
+    if(selector_register(key->s, new->fd, /*TODO:*/ &cpFdHandler, new->interests, new) != 0){
+        //TODO: Manejar error (Juli)
+        printf(" ERROR en passive_cp_socket_handler (selector_register)\n");
+        return;
+    }
+
+    printf(" Socket pasivo creado exitosamente \n");
 }
 
 static void passive_socks_socket_handler(struct selector_key * key){
@@ -200,9 +345,13 @@ finally:
     return ret_fd;
 }
 
-void 
-start_server(char * socks_addr, char * socks_port){
-    int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1;
+static void network_selector_signal_handler() { printf("SIGCHLD SIGNAL"); }
+
+
+int start_server(char * socks_addr, char * socks_port, char * mng_addr, char * mng_port){
+    printf("Entro a start server\n");
+    int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1, fd_mng_ipv4 = -1, fd_mng_ipv6 = -1;
+    int ret_code = -1;
 
     fd_socks_ipv4 = start_socket(socks_port, socks_addr, &passive_socket_fd_handler, AF_UNSPEC);
     if(fd_socks_ipv4 == -1){ 
@@ -216,6 +365,20 @@ start_server(char * socks_addr, char * socks_port){
             goto finally; 
         }
     }
+    fd_mng_ipv4 = start_socket(mng_port, mng_addr, &passive_socket_fd_mng_handler, AF_UNSPEC);
+    if(fd_mng_ipv4 == -1){ 
+        printf("Falle en start_socket ipv4, linea 150 de start_server\n");
+        goto finally; }
+    else if(mng_addr == NULL){
+        fd_mng_ipv6 = start_socket(mng_port, NULL, &passive_socket_fd_mng_handler, AF_INET6);
+        if(fd_mng_ipv6 == -1){
+            printf("Falle en start socket ipv6, linea 155 de start_server\n");
+            goto finally; 
+        }
+    }
+
+    
+
     while(1){
         int selector_ret_value = selector_select(selector);
         if(selector_ret_value != SELECTOR_SUCCESS){goto finally;}

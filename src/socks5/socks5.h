@@ -98,6 +98,9 @@ typedef struct socks_conn_model {
 } socks_conn_model;
 
 struct state_definition * socks5_all_states();
+
+//TODO: pasar a mng.c
+struct state_definition * mng_all_states();
 uint32_t socks_get_buf_size();
 
 void  close_socks_conn(socks_conn_model * connection);

@@ -3,9 +3,11 @@
 #define CLI 0
 #define SRC 1
 
+
 /*----------------------
  |  Connection functions
  -----------------------*/
+
 
 void conn_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
@@ -678,3 +680,4 @@ static const struct state_definition states[] = {
 struct state_definition * socks5_all_states(){
     return states;
 }
+

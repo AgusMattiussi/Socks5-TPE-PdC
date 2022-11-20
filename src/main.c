@@ -85,5 +85,7 @@ main(const int argc, char ** argv) {
     start_selector();
     start_server(args.socks_addr, args.socks_port);
 
-    return 0;
+    int returnCode = start_server(args.socks_addr, args.socks_port, args.mng_addr, args.mng_port);
+
+    return returnCode;
 }
