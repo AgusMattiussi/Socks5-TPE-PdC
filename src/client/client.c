@@ -39,31 +39,6 @@ char * commandStr[] = {
 int mng_connect(char * addr, char * port);
 void client_parse_args(int argc, char ** argv, struct proto * args);
 
-static void
-usage(const char *progname) {
-    fprintf(stderr,
-        "Usage: %s [OPTION]...\n"
-        "\n"
-        /*"   -h               Imprime la ayuda y termina.\n"
-        "   -l <SOCKS addr>  Dirección donde servirá el proxy SOCKS.\n"
-        "   -L <conf  addr>  Dirección donde servirá el servicio de management.\n"
-        "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
-        "   -P <conf port>   Puerto entrante conexiones configuracion\n"
-        "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
-        "   -v               Imprime información sobre la versión versión y termina.\n"
-        "\n"
-        "   --doh-ip    <ip>    \n"
-        "   --doh-port  <port>  XXX\n"
-        "   --doh-host  <host>  XXX\n"
-        "   --doh-path  <host>  XXX\n"
-        "   --doh-query <host>  XXX\n"
-        */
-        "\n",
-        progname);
-    exit(1);
-}
-
-
 
 int main(int argc, char ** argv) {
 
@@ -103,11 +78,6 @@ void client_parse_args(int argc, char ** argv, struct proto * args) {
             case 'l':
                 args->addr = optarg;
                 break;
-            
-            /*case '?':
-                admin_usage();
-                printf("Invalid Arguments");
-                exit(1);*/
 
         }
     }
@@ -245,10 +215,10 @@ int mng_connect(char * addr, char * port) {
     int done = 0;
     char buf[MAXLEN];
 
-    size_t byte_n;
+    size_t byte_n = MAXLEN;
     ssize_t n_received = recv(proxy_socket, buf, byte_n, 0);
 
-    if(buf[0] != SUCCESS)
+    if(buf[0] != SUCCESS || n_received < 0)
         return -1;
 
     version = &buf[2];

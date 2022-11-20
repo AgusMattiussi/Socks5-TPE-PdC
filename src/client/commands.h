@@ -25,7 +25,7 @@
 #define COMMAND_DISSECTOR_ON '7'
 #define COMMAND_DISSECTOR_OFF '8'
 #define COMMAND_CANT 8
-#define NO_DATA 0
+#define HAS_NOT_DATA 0
 #define HAS_DATA 1
 #define MAXLEN 1024
 
@@ -40,3 +40,4 @@ char dissector_on(int fd);
 char dissector_off(int fd);
 
 #endif
+

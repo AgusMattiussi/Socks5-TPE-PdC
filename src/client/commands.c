@@ -35,6 +35,9 @@ char parse_metrics_message(int fd) {
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
+    if(n_received < 0)
+        return '0';
+
     if((char)response_buf[0] == FAILURE) {
         if((char)response_buf[1] != SUCCESS)
             return '0';
@@ -55,6 +58,9 @@ char receive_simple_response(int fd) {
     //FIXME: Estaba sin inicializar
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
+
+    if(n_received < 0)
+        return '0';
 
     printf("buf: %s\n", response_buf);
 
