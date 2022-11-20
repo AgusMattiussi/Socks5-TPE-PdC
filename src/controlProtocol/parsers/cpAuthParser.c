@@ -18,7 +18,7 @@ void cpapParseByte(cpAuthParser * parser, uint8_t byte) {
         case CPAP_HAS_DATA:
             printf("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte);
             // TODO: Cambiar a 0x1
-            if(byte == '1')  // Deberia haber una sola linea (<password>\n)
+            if(byte == 0x1/* '1' */)  // Deberia haber una sola linea (<password>\n)
                 parser->currentState = CPAP_READ_PASSWORD;
             else 
                 parser->currentState = CPAP_ERROR;
