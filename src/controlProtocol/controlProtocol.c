@@ -360,7 +360,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
             getSniffedUsersList(parser, answer);
             break;
         case CP_GET_METRICS:
-            /* code */
+            getMetrics(parser, answer);
             break;
         case CP_DISSECTOR_ON:
             turnOnPassDissectors(parser, answer);

@@ -116,3 +116,21 @@ void getSniffedUsersList(cpCommandParser * parser, char * answer){
    answer[1] = 1;   // HAS_DATA = 1
    return;
 }
+
+void getMetrics(cpCommandParser * parser, char * answer){
+    if(parser->hasData == 1){
+        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
+        return;
+    }
+
+
+    answer = calloc(3, 1 /* x Tamanio Metricas */);
+
+    /* TODO: Cargar en answer las metricas. Deberian ser siempre 
+       dos lineas, en formato CSV    
+    */
+
+   answer[0] = STATUS_SUCCESS;
+   answer[1] = 1;   // HAS_DATA = 1
+   return;
+}
