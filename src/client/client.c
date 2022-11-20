@@ -10,20 +10,6 @@
 #include "commands.h"
 #include <string.h>
 
-#define D_ADDR "127.0.0.1"
-#define D_PORT "8080"
-#define FAILURE '0'
-#define SUCCESS '1'
-#define COMMAND_ADD_USER '2'
-#define COMMAND_DELETE_USER '3'
-#define COMMAND_EDIT_PASSWORD '4'
-#define COMMAND_LIST_USERS '5'
-#define COMMAND_OBTAIN_METRICS '6'
-#define COMMAND_DISSECTOR_ON '7'
-#define COMMAND_DISSECTOR_OFF '8'
-#define COMMAND_CANT 8
-#define MAXLEN 1024
-
 static char * version;
 char * commandStr[] = {
         "help",
@@ -172,7 +158,18 @@ int new_command(int fd, char * buf) {
             goto error;
         }
 
-    printf("%c\n", ret);
+    switch (ret)
+    {
+    case '0':
+        printf("Error inesperado del servidor. Cerrando...\n");
+        return 1;
+        break;
+    case '1':
+        printf("Success!\n");
+        break;
+    default:
+        break;
+    }
     return 0;
 
     error:

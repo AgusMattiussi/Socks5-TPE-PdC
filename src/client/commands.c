@@ -1,27 +1,72 @@
 
 #include "commands.h"
 
-char parse_users_message(int fd) {
+int row_count = 0;
 
-    uint8_t response_buf[MAXLEN];
+char parse_users_message(int fd, char * offset) {
+
+    uint8_t response_buf[MAXLEN] = {0};
+
+    printf("entrando... offset = %s\n", offset);
 
     //FIXME: Estaba sin inicializar
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
 
-    if((char)response_buf[0] == FAILURE) {
-        if((char)response_buf[1] != SUCCESS)
-            return '0';
-        return (char)response_buf[2];
+    if(n_received < 0)
+        return '0';
+
+    int pos = 0;
+    if(offset == NULL) {
+        if((char)response_buf[0] == FAILURE) {
+            if(response_buf[1] != HAS_DATA)
+                return '0';
+            return (char)response_buf[2];
+        }
+        row_count = (int)response_buf[1];
+        pos = 2;
     }
 
-    int row_count = (int)response_buf[1];
+    if(offset==NULL)
+        offset = "";
 
-    char * users = strtok(&response_buf[2], "\n");
+    char str[2] = {0};
+    str[0] = TOKEN;
 
-    for(int i=0; i<row_count; i++) {
-        printf("%s\n", users);
-        users = strtok(NULL, "\n");
+    char * current_user = strtok(&response_buf[pos], str);
+    if(response_buf[0] == TOKEN) {
+        printf("%s\n", offset);
+        printf("%s\n", current_user);
+        row_count--;
+    } else {
+        char aux[MAXLEN] = {0};
+        strcat(aux, offset);
+        strcat(aux, current_user);
+
+        printf("%s\n", aux);
+    }
+    
+    row_count--;
+
+    while(pos<MAXLEN) {
+        if(response_buf[pos++] == TOKEN) {
+            current_user = strtok(NULL, str);
+            row_count--;
+            printf("%s\n", current_user);        
+        } 
+    }
+
+    char str2[2] = {0};
+    str2[0] = '\0';
+
+    if(row_count < 0)
+        return '0';
+
+    if(row_count > 0) {
+        current_user = strtok(NULL, str2);
+        if(current_user == NULL)
+            current_user = "";
+        return parse_users_message(fd, current_user);
     }
     
     return '1';
@@ -39,7 +84,7 @@ char parse_metrics_message(int fd) {
         return '0';
 
     if((char)response_buf[0] == FAILURE) {
-        if((char)response_buf[1] != SUCCESS)
+        if(response_buf[1] != HAS_DATA)
             return '0';
         return (char)response_buf[2];
     }
@@ -64,10 +109,10 @@ char receive_simple_response(int fd) {
 
     printf("buf: %s\n", response_buf);
 
-    if(response_buf[0] == FAILURE) {
-        if(response_buf[1] != SUCCESS)
+    if((char)response_buf[0] == FAILURE) {
+        if(response_buf[1] != HAS_DATA)
             return '0';
-        return response_buf[2];
+        return (char)response_buf[2];
     }    
     
     return '1';
@@ -152,7 +197,7 @@ char list_users(int fd) {
     to_send[1] = NO_DATA;
     send(fd, to_send, 2, 0);
 
-    return parse_users_message(fd);
+    return parse_users_message(fd, NULL);
 }
 
 char obtain_metrics(int fd) {
