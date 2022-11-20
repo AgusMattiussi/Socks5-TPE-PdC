@@ -12,8 +12,6 @@ uint32_t socks_get_buf_size() { return buf_size; }
 
 void conn_read_init(const unsigned state, struct selector_key * key){
     struct socks_conn_model * connection = (socks_conn_model *)key->data;
-    // TODO: Where to parse input? 
-    // Update: We initialize parser when read is set
     start_connection_parser(connection->parsers->connect_parser);
 }
 
@@ -34,9 +32,7 @@ static enum socks_state conn_read(struct selector_key * key){
         return ERROR;
     }
     if(ret_state == CONN_DONE){
-        // Nothing else to read, we move to writing
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
-        //If finished, we need to create and send the srv response
         if(ret_selector == SELECTOR_SUCCESS){
             size_t n_available;
             uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
@@ -44,20 +40,19 @@ static enum socks_state conn_read(struct selector_key * key){
                 LogError("Not enough space to send connection response.");
                 return ERROR;
             }
-            write_ptr[0] = SOCKS_VERSION; write_ptr[1] = parser->auth;
+            *write_ptr++ = SOCKS_VERSION; *write_ptr = parser->auth;
             buffer_write_adv(&connection->buffers->write_buff, 2);
             return CONN_WRITE;
         }
         return ERROR;
     }
-    //Not done yet
     return CONN_READ;
 }
 
 static enum socks_state 
 conn_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *) key->data;
-    // We need to build the write the server response to buffer
+
     size_t n_available;
     uint8_t * buff_ptr = buffer_read_ptr(&connection->buffers->write_buff, &n_available);
     ssize_t n_sent = send(connection->cli_conn->socket, buff_ptr, n_available, 0); //TODO: Flags?
@@ -65,14 +60,11 @@ conn_write(struct selector_key * key){
         LogError("Error sending bytes to client socket.");
         return ERROR;
     }
-    LogDebug("Mande %d bytes hacia cli\n", n_sent);
     buffer_read_adv(&connection->buffers->write_buff, n_sent);
-    // We need to check whether there is something else to send. If so, we keep writing
     if(buffer_can_read(&connection->buffers->write_buff)){
         return CONN_WRITE;
     }
 
-    // Nothing else to send. We set fd_interests and add to selector
     selector_status status = selector_set_interest_key(key, OP_READ);
     if(status != SELECTOR_SUCCESS) return ERROR;
 
@@ -122,7 +114,7 @@ conn_write(struct selector_key * key){
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
         if(is_authenticated == -1){
-            LogError("User does not exist. Exiting.\n");
+            LogError("Error authenticating user. Username or password are incorrect, or user does not exist. Exiting.\n");
             return ERROR;
         }
         set_curr_user((char*)parser->username);
@@ -140,10 +132,10 @@ conn_write(struct selector_key * key){
         return AUTH_WRITE;
     }
     return AUTH_READ;
- }
+}
 
- static enum socks_state 
- auth_write(struct selector_key * key){
+static enum socks_state 
+auth_write(struct selector_key * key){
     socks_conn_model * connection = (socks_conn_model *)key->data;
 
     size_t byte_n;
@@ -156,30 +148,13 @@ conn_write(struct selector_key * key){
     }
     selector_status ret_selector = selector_set_interest_key(key, OP_READ);
     return ret_selector == SELECTOR_SUCCESS? REQ_READ:ERROR;
- }
+}
 
  /*----------------------------
  |  Request functions
  ---------------------------*/
 
  #define FIXED_RES_BYTES 6
-
-enum socks_state connect_error_to_socks(const int e) {
-    switch (e) {
-    case 0:
-        return RES_SUCCESS;
-    case ECONNREFUSED:
-        return RES_CONN_REFUSED;
-    case EHOSTUNREACH:
-        return RES_HOST_UNREACHABLE;
-    case ENETUNREACH:
-        return RES_NET_UNREACHABLE;
-    case ETIMEDOUT:
-        return RES_TTL_EXPIRED;
-    default:
-        return RES_CMD_UNSUPPORTED;
-    }
-}
 
 static int
 req_response_message(buffer * write_buff, struct res_parser * parser){
@@ -249,13 +224,14 @@ init_connection(struct req_parser * parser, socks_conn_model * connection, struc
     if(connect_ret == 0 || ((connect_ret != 0) && (errno == EINPROGRESS))){ 
         int selector_ret = selector_set_interest(key->s, connection->cli_conn->socket, OP_NOOP);
         if(selector_ret != SELECTOR_SUCCESS) {return ERROR;}
-        selector_ret = selector_register(key->s, connection->src_conn->socket, get_conn_actions_handler(),
-                                        OP_WRITE, connection);
+        selector_ret = selector_register(key->s, connection->src_conn->socket, 
+                            get_conn_actions_handler(), OP_WRITE, connection);
         if(selector_ret != SELECTOR_SUCCESS){return ERROR;}
         return REQ_CONNECT;
     }
+    LogError("Initializing connection failure");
     perror("Connect failed due to: ");
-    return manage_req_error(parser, connect_error_to_socks(errno), connection, key);
+    return manage_req_error(parser, errno_to_req_response_state(errno), connection, key);
 }
 
 static struct addrinfo hint = {
@@ -291,11 +267,11 @@ req_resolve_thread(void * arg){
     pthread_detach(pthread_self());
     char aux_buff[7];
     snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(connection->parsers->req_parser->port));
-    int ret = -1;
+    int ret_getaddrinfo = -1;
     struct addrinfo aux_hint = get_hint();
-    ret = getaddrinfo((char *) connection->parsers->req_parser->addr.fqdn,
+    ret_getaddrinfo = getaddrinfo((char *) connection->parsers->req_parser->addr.fqdn,
                     aux_buff, &aux_hint, &connection->resolved_addr);
-    if(ret != 0){
+    if(ret_getaddrinfo != 0){
         LogError("Could not resolve FQDN.");
         freeaddrinfo(connection->resolved_addr);
         connection->resolved_addr = NULL;
@@ -370,13 +346,11 @@ req_read(struct selector_key * key) {
         switch (parser->cmd) {
             case REQ_CMD_CONNECT:
                 return set_connection(connection, parser, parser->type, key);
-                break; //TODO: Creo que innecesario
             case REQ_CMD_BIND:
             case REQ_CMD_UDP:
                 return manage_req_error(parser, RES_CMD_UNSUPPORTED, connection, key);
-                break; //TODO: Creo que innecesario
             case REQ_CMD_NONE:
-                return DONE; //TODO: Y que hago acá, termina nomas no?
+                return DONE;
             default:
                 LogError("Unknown request command type\n");
                 return ERROR;
@@ -452,7 +426,7 @@ req_connect(struct selector_key * key) {
                 close(connection->src_conn->socket);
                 return req_resolve(key);
             }
-            return manage_req_error(parser, connect_error_to_socks(optval), connection, key);
+            return manage_req_error(parser, errno_to_req_response_state(optval), connection, key);
         }
         if(parser->type == FQDN){ clean_resolved_addr(connection);}
         int ret_val = set_response(parser, connection->src_addr_family, connection);
