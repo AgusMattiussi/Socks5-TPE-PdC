@@ -92,13 +92,12 @@ conn_information(socks_conn_model * connection){
 	// https://stackoverflow.com/questions/9527960/how-do-i-construct-an-iso-8601-datetime-in-c)
 	time_t now;
     time(&now);
-	struct tm tp; //Slight twak for time zone with respect to S.O.'s answer
+	struct tm tp; //Slight tweak for time zone with respect to S.O.'s answer
     char time_buff[sizeof("2022-11-19T12:00:00Z")];
 	localtime_r(&now, &tp);
     strftime(time_buff, sizeof(time_buff), "%FT%TZ", &tp);
-    // this will work too, if your compiler doesn't support %F or %T:
-    //strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
-	
+    
+
 	//Username (¿Hay uno loggeado?)
 	char * username = get_curr_user();
 	username = username==NULL?"¿?":username;
@@ -130,7 +129,7 @@ pass_information(socks_conn_model * connection){
 	struct pop3_parser * pop3_parser = connection->pop3_parser;
 	time_t now;
     time(&now);
-	struct tm tp; //Slight twak for time zone with respect to S.O.'s answer
+	struct tm tp;
     char time_buff[sizeof("2022-11-19T12:00:00Z")];
 	localtime_r(&now, &tp);
     strftime(time_buff, sizeof(time_buff), "%FT%TZ", &tp);

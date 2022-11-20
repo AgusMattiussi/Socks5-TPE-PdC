@@ -541,7 +541,8 @@ copy_read(struct selector_key * key) {
             copy->other->interests = copy->other->interests & copy->other->connection_interests;
             selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture wrong set?
 
-            if(ntohs(connection->parsers->req_parser->port) == POP3_PORT && connection->pop3_parser != NULL && sniffer_is_on()){
+            if(ntohs(connection->parsers->req_parser->port) == POP3_PORT && 
+                connection->pop3_parser != NULL && sniffer_is_on()){
                 if(pop3_parse(connection->pop3_parser, copy->write_buff) == POP3_DONE){
                     pass_information(connection);
                 }
@@ -549,7 +550,16 @@ copy_read(struct selector_key * key) {
 
             return COPY;
         }
-        
+        /*
+       If  no messages are available at the socket, the receive calls
+       wait for a message to arrive, unless the socket is nonblocking
+       (see fcntl(2)), in which case the value -1 is returned and the
+       external variable errno is set to EAGAIN or EWOULDBLOCK.   The
+       receive  calls  normally  return any data available, up to the
+       requested amount, rather than waiting for receipt of the  full
+       amount requested. --> Volvemos a entrar sin cambiar intenciones,
+       esta procesando.
+        */
         if(errno == EAGAIN || errno == EWOULDBLOCK){ 
             return COPY; 
         }
@@ -562,7 +572,8 @@ copy_read(struct selector_key * key) {
         // https://stackoverflow.com/questions/570793/how-to-stop-a-read-operation-on-a-socket
         // and (from top answer) man -s 2 shutdown
         shutdown(copy->fd, SHUT_RD);
-        copy->other->connection_interests &= ~OP_WRITE;
+        copy->other->connection_interests = 
+            copy->other->connection_interests & OP_READ;
         
         if(!buffer_can_read(copy->write_buff)){
             copy->other->interests &= copy->other->connection_interests;
@@ -575,9 +586,7 @@ copy_read(struct selector_key * key) {
                 (copy->other->connection_interests == OP_NOOP?
                 DONE:COPY):COPY;
     }
-    // Pass to copy state
-    copy->interests = copy->interests & ~OP_READ;
-    copy->interests = copy->interests & copy->connection_interests;
+    copy->interests = (copy->interests & OP_WRITE) & copy->connection_interests;
     selector_set_interest(key->s, key->fd, copy->interests);
     return COPY;
 }
@@ -600,15 +609,14 @@ copy_write(struct selector_key * key) {
 
     buffer_read_adv(copy->read_buff, bytes_sent);
     add_bytes_transferred((long)bytes_sent);
-    copy->other->interests = copy->other->interests | OP_READ;
-    copy->other->interests = copy->other->interests & copy->other->connection_interests;
+    copy->other->interests = (copy->other->interests | OP_READ) & copy->other->connection_interests;
     selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture return?
 
     if (!buffer_can_read(copy->read_buff)) {
-        copy->interests &= ~OP_WRITE;
-        copy->interests &= copy->connection_interests;
+        copy->interests = (copy->interests & OP_READ) & copy->connection_interests;
         selector_set_interest(key->s, copy->fd, copy->interests);
-        if (!(copy->connection_interests & OP_WRITE)) {
+        uint8_t still_write = copy->connection_interests & OP_WRITE;
+        if(still_write == 0){
             shutdown(copy->fd, SHUT_WR);
         }
     }

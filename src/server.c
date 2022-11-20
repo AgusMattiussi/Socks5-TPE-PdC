@@ -279,13 +279,12 @@ void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * 
         LogError("Failed to start IPv4 socket");
         goto finally; 
     }
-    else if(socks_addr == NULL){
+    //else if(socks_addr == NULL){
         fd_socks_ipv6 = start_socket(socks_port, NULL, &passive_socket_fd_handler, AF_INET6);
         if(fd_socks_ipv6 == -1){
             LogError("Failed to start IPv6 socket");
             goto finally; 
         }
-    }
     fd_mng_ipv4 = start_socket(mng_port, mng_addr, &passive_socket_fd_mng_handler, AF_UNSPEC);
     if(fd_mng_ipv4 == -1){ 
         printf("Falle en start_socket ipv4, linea 150 de start_server\n");

@@ -112,10 +112,16 @@ selector_destroy(fd_selector s);
  * OP_NOOP es útil para cuando no se tiene ningún interés.
  */
 typedef enum {
-    OP_NOOP    = 0,
-    OP_READ    = 1 << 0,
-    OP_WRITE   = 1 << 2,
+    OP_NOOP    = 0, //0000
+    OP_READ    = 1 << 0, // 0001
+    OP_WRITE   = 1 << 2, // 0100
 } fd_interest ;
+
+// 1111 & ~0100 = 1111 & 1011 --> Primer uno no sirve de nada, no se usa nunca.
+// Nunca se debería activar siquiera, enfoquemos en los otros 3. 
+// Es un and para OP_READ
+
+// ~0001 = 1110
 
 /**
  * Quita un interés de una lista de intereses
