@@ -83,7 +83,7 @@ controlProtConn * newControlProtConn(int fd){
         //TODO: Cambiar esto al onArrival?
         initCpAuthParser(&new->authParser);
         initCpCommandParser(&new->commandParser);
-        buffer_init(new->readBuffer, BUFFER_SIZE, new->readBufferData);
+        buffer_init(new->readBuffer, BUFFER_SIZE, new->re5adBufferData);
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
         new->fd = fd;
@@ -93,12 +93,14 @@ controlProtConn * newControlProtConn(int fd){
     return new;
 }
 
-void freeControlProtConn(controlProtConn * cpc){
+void freeControlProtConn(controlProtConn * cpc, fd_selector s){
     if(cpc == NULL)
         return;
 
     free(cpc->readBuffer);
     free(cpc->writeBuffer);
+    selector_unregister_fd(s, cpc->fd, false);
+    close(cpc->fd);
     free(cpc);
 }
 
@@ -158,6 +160,11 @@ void cpReadHandler(struct selector_key * key){
         Actualizo el estado actual */
     cpc->currentState = stm_handler_read(&cpc->connStm, key);
 }
+
+void cpCloseHandler(struct selector_key * key){
+    freeControlProtConn((controlProtConn *) key->data, key->s);
+}
+
 
 /* ================== Handlers para cada estado de la STM ======================== */
 

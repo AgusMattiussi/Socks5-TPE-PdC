@@ -73,15 +73,11 @@ static void dummyBlock(struct selector_key * key){
     printf("\n DUMMY BLOCK\n");
 }
 
-static void dummyClose(struct selector_key * key){
-    printf("\n DUMMY CLOSE\n");
-}
-
 const fd_handler cpFdHandler = {
     .handle_read = cpReadHandler,
     .handle_write = cpWriteHandler,
     .handle_block = dummyBlock,
-    .handle_close = dummyClose
+    .handle_close = cpCloseHandler
 };
 
 
