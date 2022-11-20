@@ -63,7 +63,7 @@ static pop3_state parse_pass(pop3_parser * parser, uint8_t c){
     return POP3_PASS;
 }
 
-static void pop3_parse_byte(pop3_parser * parser){
+static void pop3_parse_char(pop3_parser * parser){
     while(buffer_can_read(&parser->buff) && parser->state != POP3_DONE){
         uint8_t c = buffer_read(&parser->buff);
         
@@ -107,7 +107,7 @@ pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
     parser->buff.write = buff->write;
     parser->buff.limit = buff->limit;
 
-    pop3_parse_byte(parser);
+    pop3_parse_char(parser);
 
     pop3_state ret = parser->state;
 
