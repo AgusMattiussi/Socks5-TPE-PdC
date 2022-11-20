@@ -1,8 +1,7 @@
 #include "socks5.h"
 
-#define BUFFER_DEFAULT_SIZE 4096
-uint32_t buf_size = BUFFER_DEFAULT_SIZE;
-uint32_t socks_get_buf_size() { return buf_size; }
+#define CLI 0
+#define SRC 1
 
 /*----------------------
  |  Connection functions
@@ -496,13 +495,13 @@ req_write(struct selector_key * key) {
 static int
 init_copy_structure(socks_conn_model * connection, struct copy_model_t * copy,
                     int which){
-    if(which == 0){
+    if(which == CLI){
         copy->fd = connection->cli_conn->socket;
         copy->read_buff = &connection->buffers->read_buff;
         copy->write_buff = &connection->buffers->write_buff;
         copy->other = &connection->src_copy;
     }
-    else if(which == 1){
+    else if(which == SRC){
         copy->fd = connection->src_conn->socket;
         copy->read_buff = &connection->buffers->write_buff;
         copy->write_buff = &connection->buffers->read_buff;
@@ -521,13 +520,13 @@ static void
 copy_init(unsigned state, struct selector_key * key) {
     socks_conn_model * connection = (socks_conn_model *)key->data;
     struct copy_model_t * copy = &connection->cli_copy;
-    int init_ret = init_copy_structure(connection, copy, 0);
+    int init_ret = init_copy_structure(connection, copy, CLI);
     if(init_ret == -1){
         fprintf(stdout, "Error initializng copy structures\n");
         //return ERROR;
     }
     copy = &connection->src_copy;
-    init_ret = init_copy_structure(connection, copy, 1);
+    init_ret = init_copy_structure(connection, copy, SRC);
     if(init_ret == -1){
         LogError("Error initializng copy structures\n");
         //return ERROR;
