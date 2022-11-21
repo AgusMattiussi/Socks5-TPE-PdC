@@ -13,7 +13,6 @@ check_buff_and_receive(buffer * buff_ptr, int socket){
     size_t byte_n;
     uint8_t * write_ptr = buffer_write_ptr(buff_ptr, &byte_n);
     ssize_t n_received = recv(socket, write_ptr, byte_n, 0); //TODO:Flags?
-
     if(n_received <= 0) return -1;
     buffer_write_adv(buff_ptr, n_received);
     return n_received;
@@ -24,7 +23,6 @@ check_buff_and_send(buffer * buff_ptr, int socket){
     size_t n_available;
     uint8_t * read_ptr = buffer_read_ptr(buff_ptr, &n_available);
     ssize_t n_sent = send(socket, read_ptr, n_available, 0); //TODO: Flags?
-    
     if(n_sent == -1){ return -1; }
     buffer_read_adv(buff_ptr, n_sent);
     return n_sent;
@@ -36,19 +34,19 @@ check_buff_and_send(buffer * buff_ptr, int socket){
  -----------------------*/
 
 
-void conn_read_init(const unsigned state, struct selector_key * key){
-    struct socks_conn_model * connection = (socks_conn_model *)key->data;
-    start_connection_parser(connection->parsers->connect_parser);
-}
+static enum socks_state hello_read(struct selector_key * key){
+    
+    if(key == NULL)
+        return ERROR;
 
-static enum socks_state conn_read(struct selector_key * key){
-    struct socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct conn_parser * parser = connection->parsers->connect_parser;
+    struct socks_conn_model * socks = (socks_conn_model *)key->data;
+    start_connection_parser(socks->parsers->connect_parser);
 
-    if(check_buff_and_receive(&connection->buffers->read_buff,
-                                    connection->cli_conn->socket) == -1){ return ERROR; }
+    if(check_buff_and_receive(&socks->buffers->read_buff,
+                                    socks->cli_conn->socket) == -1){ return ERROR; }
 
-    enum conn_state ret_state = conn_parse_full(parser, &connection->buffers->read_buff);
+    struct conn_parser * parser = socks->parsers->connect_parser;
+    enum conn_state ret_state = conn_parse_full(parser, &socks->buffers->read_buff);
     if(ret_state == CONN_ERROR){
         LogError("Error while parsing.");
         return ERROR;
@@ -57,38 +55,42 @@ static enum socks_state conn_read(struct selector_key * key){
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector == SELECTOR_SUCCESS){
             size_t n_available;
-            uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
+            uint8_t * write_ptr = buffer_write_ptr(&socks->buffers->write_buff, &n_available);
             if(n_available < 2){
-                LogError("Not enough space to send connection response.");
+                LogError("Not enough space to send socks response.");
                 return ERROR;
             }
             *write_ptr++ = SOCKS_VERSION; *write_ptr = parser->auth;
-            buffer_write_adv(&connection->buffers->write_buff, 2);
-            return CONN_WRITE;
+            buffer_write_adv(&socks->buffers->write_buff, 2);
+            return HELLO_WRITE;
         }
         return ERROR;
     }
-    return CONN_READ;
+    return HELLO_READ;
 }
 
 
 static enum socks_state 
-conn_write(struct selector_key * key){
-    socks_conn_model * connection = (socks_conn_model *) key->data;
+hello_write(struct selector_key * key){
 
-    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
+    if(key == NULL)
+        return ERROR;
+
+    socks_conn_model * socks = (socks_conn_model *) key->data;
+
+    if(check_buff_and_send(&socks->buffers->write_buff, socks->cli_conn->socket) == -1){
         LogError("Error sending bytes to client socket.");
         return ERROR;
     }
 
-    if(buffer_can_read(&connection->buffers->write_buff)){
-        return CONN_WRITE;
+    if(buffer_can_read(&socks->buffers->write_buff)){
+        return HELLO_WRITE;
     }
 
     selector_status status = selector_set_interest_key(key, OP_READ);
     if(status != SELECTOR_SUCCESS) return ERROR;
 
-    switch(connection->parsers->connect_parser->auth){
+    switch(socks->parsers->connect_parser->auth){
         case NO_AUTH:
             LogDebug("STM pasa a estado REQ_READ\n");
             return REQ_READ;
@@ -108,21 +110,20 @@ conn_write(struct selector_key * key){
  |  Authentication functions
  ---------------------------*/
 
-
- void auth_read_init(const unsigned state, struct selector_key * key){
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    auth_parser_init(connection->parsers->auth_parser);
- }
-
  static enum socks_state 
  auth_read(struct selector_key * key){
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct auth_parser * parser = connection->parsers->auth_parser;
 
-    if(check_buff_and_receive(&connection->buffers->read_buff,
-                                    connection->cli_conn->socket) == -1){ return ERROR; }
+    if(key == NULL)
+        return ERROR;
 
-    enum auth_state ret_state = auth_parse_full(parser, &connection->buffers->read_buff);
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    auth_parser_init(socks->parsers->auth_parser);
+
+    if(check_buff_and_receive(&socks->buffers->read_buff,
+                                    socks->cli_conn->socket) == -1){ return ERROR; }
+
+    struct auth_parser * parser = socks->parsers->auth_parser;
+    enum auth_state ret_state = auth_parse_full(parser, &socks->buffers->read_buff);
     if(ret_state == AUTH_ERROR){
         LogError("Error parsing auth method");
         return ERROR;
@@ -130,37 +131,39 @@ conn_write(struct selector_key * key){
     if(ret_state == AUTH_DONE){ 
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
-        if(is_authenticated == -1){
+        /*if(is_authenticated == -1){
             LogError("Error authenticating user. Username or password are incorrect, or user does not exist. Exiting.\n");
+            
             return ERROR;
-        }
+        }*/
         set_curr_user((char*)parser->username);
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;        
         size_t n_available;
-        uint8_t * write_ptr = buffer_write_ptr(&connection->buffers->write_buff, &n_available);
+        uint8_t * write_ptr = buffer_write_ptr(&socks->buffers->write_buff, &n_available);
         if(n_available < 2){
             LogError("Not enough space to send connection response.");
             return ERROR;
         }
         write_ptr[0] = AUTH_VERSION;
         write_ptr[1] = is_authenticated;
-        buffer_write_adv(&connection->buffers->write_buff, 2);
+        buffer_write_adv(&socks->buffers->write_buff, 2);
         return AUTH_WRITE;
     }
     return AUTH_READ;
 }
 
+
 static enum socks_state 
 auth_write(struct selector_key * key){
-    socks_conn_model * connection = (socks_conn_model *)key->data;
+    socks_conn_model * socks = (socks_conn_model *)key->data;
 
-    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
+    if(check_buff_and_send(&socks->buffers->write_buff, socks->cli_conn->socket) == -1){
         LogError("Error sending bytes to client socket.");
         return ERROR;
     }
 
-    if(buffer_can_read(&connection->buffers->write_buff)){
+    if(buffer_can_read(&socks->buffers->write_buff)){
         return AUTH_WRITE;
     }
     selector_status ret_selector = selector_set_interest_key(key, OP_READ);
@@ -192,23 +195,6 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
         LogError("Error detecting address type.");
         return -1;
     }
-
-    /*if(addr_type == IPv4){
-        length = IPv4_BYTES;
-        addr_ptr = (uint8_t *)&(parser->addr.ipv4.sin_addr);
-    }
-    else if(addr_type == IPv6){
-        length = IPv6_BYTES;
-        addr_ptr = parser->addr.ipv6.sin6_addr.s6_addr;
-    }
-    else if(addr_type == FQDN){
-        length = strlen((char *)parser->addr.fqdn);
-        addr_ptr = parser->addr.fqdn;
-    }
-    else{
-        LogError("Address type not recognized\n");
-        return -1;
-    }*/
 
     size_t space_needed = length + FIXED_RES_BYTES + (parser->type==FQDN);
     if (n_bytes < space_needed) {
@@ -252,24 +238,24 @@ manage_req_error(struct req_parser * parser, enum socks_state socks_state,
 }
 
 static enum socks_state 
-init_connection(struct req_parser * parser, socks_conn_model * connection, struct selector_key * key) {
-    connection->src_conn->socket = socket(connection->src_addr_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    if (connection->src_conn->socket == -1) {
+init_connection(struct req_parser * parser, socks_conn_model * socks, struct selector_key * key) {
+    socks->src_conn->socket = socket(socks->src_addr_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (socks->src_conn->socket == -1) {
         return ERROR;
     }
-    int connect_ret = connect(connection->src_conn->socket, 
-        (struct sockaddr *)&connection->src_conn->addr, connection->src_conn->addr_len);
+    int connect_ret = connect(socks->src_conn->socket, 
+        (struct sockaddr *)&socks->src_conn->addr, socks->src_conn->addr_len);
     if(connect_ret == 0 || ((connect_ret != 0) && (errno == EINPROGRESS))){ 
-        int selector_ret = selector_set_interest(key->s, connection->cli_conn->socket, OP_NOOP);
+        int selector_ret = selector_set_interest(key->s, socks->cli_conn->socket, OP_NOOP);
         if(selector_ret != SELECTOR_SUCCESS) {return ERROR;}
-        selector_ret = selector_register(key->s, connection->src_conn->socket, 
-                            get_conn_actions_handler(), OP_WRITE, connection);
+        selector_ret = selector_register(key->s, socks->src_conn->socket, 
+                            get_conn_actions_handler(), OP_WRITE, socks);
         if(selector_ret != SELECTOR_SUCCESS){return ERROR;}
         return REQ_CONNECT;
     }
     LogError("Initializing connection failure");
     perror("Connect failed due to: ");
-    return manage_req_error(parser, errno_to_req_response_state(errno), connection, key);
+    return manage_req_error(parser, errno_to_req_response_state(errno), socks, key);
 }
 
 static struct addrinfo hint = {
@@ -299,92 +285,87 @@ clean_hint(){
 }
 
 static void *
-req_resolve_thread(void * arg){
+req_dns_thread(void * arg){
     struct selector_key * aux_key = (struct selector_key *) arg; 
-    socks_conn_model * connection = (socks_conn_model *)aux_key->data;
+    socks_conn_model * socks = (socks_conn_model *)aux_key->data;
 
     pthread_detach(pthread_self());
     
     char aux_buff[7];
-    snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(connection->parsers->req_parser->port));
+    snprintf(aux_buff, sizeof(aux_buff), "%d", ntohs(socks->parsers->req_parser->port));
     int ret_getaddrinfo = -1;
     struct addrinfo aux_hint = get_hint();
-    ret_getaddrinfo = getaddrinfo((char *) connection->parsers->req_parser->addr.fqdn,
-                    aux_buff, &aux_hint, &connection->resolved_addr);
+    ret_getaddrinfo = getaddrinfo((char *) socks->parsers->req_parser->addr.fqdn,
+                    aux_buff, &aux_hint, &socks->resolved_addr);
     if(ret_getaddrinfo != 0){
         LogError("Could not resolve FQDN.");
-        freeaddrinfo(connection->resolved_addr);
-        connection->resolved_addr = NULL;
+        freeaddrinfo(socks->resolved_addr);
+        socks->resolved_addr = NULL;
     }
     clean_hint();
-    connection->curr_addr = connection->resolved_addr;
+    socks->curr_addr = socks->resolved_addr;
     selector_notify_block(aux_key->s, aux_key->fd);
     free(arg);
     return 0;
 }
 
-static void 
-req_read_init(unsigned state, struct selector_key * key) {
-    socks_conn_model * conn = (socks_conn_model *)key->data;
-    req_parser_init(conn->parsers->req_parser);
-}
 
 static enum socks_state
-set_connection(socks_conn_model * connection, struct req_parser * parser, enum req_atyp type,
+set_connection(socks_conn_model * socks, struct req_parser * parser, enum req_atyp type,
                 struct selector_key * key){
     if(type == IPv4){
-        connection->src_addr_family = AF_INET;
+        socks->src_addr_family = AF_INET;
         parser->addr.ipv4.sin_port = parser->port;
-        connection->src_conn->addr_len = sizeof(parser->addr.ipv4);
-        memcpy(&connection->src_conn->addr, &parser->addr.ipv4, sizeof(parser->addr.ipv4));
+        socks->src_conn->addr_len = sizeof(parser->addr.ipv4);
+        memcpy(&socks->src_conn->addr, &parser->addr.ipv4, sizeof(parser->addr.ipv4));
     }
     else if(type == IPv6){
-        connection->src_addr_family = AF_INET6;
+        socks->src_addr_family = AF_INET6;
         parser->addr.ipv6.sin6_port = parser->port;
-        connection->src_conn->addr_len = sizeof(parser->addr.ipv6);
-        memcpy(&connection->src_conn->addr, &parser->addr.ipv6, sizeof(parser->addr.ipv6));
+        socks->src_conn->addr_len = sizeof(parser->addr.ipv6);
+        memcpy(&socks->src_conn->addr, &parser->addr.ipv6, sizeof(parser->addr.ipv6));
     }
     else if(type == FQDN){
         struct selector_key * aux_key = malloc(sizeof(*key));
         if (aux_key == NULL) {
             LogError("Malloc failure for aux_key instantiation\n");
-            return manage_req_error(parser, RES_SOCKS_FAIL, connection, key);
+            return manage_req_error(parser, RES_SOCKS_FAIL, socks, key);
         }
         memcpy(aux_key, key, sizeof(*key));
         pthread_t tid;
-        int thread_create_ret = pthread_create(&tid, NULL, &req_resolve_thread, aux_key);
+        int thread_create_ret = pthread_create(&tid, NULL, &req_dns_thread, aux_key);
         if (thread_create_ret !=0 ){
             free(aux_key);
-            return manage_req_error(parser, RES_SOCKS_FAIL, connection, key);
+            return manage_req_error(parser, RES_SOCKS_FAIL, socks, key);
         }
         selector_status selector_ret = selector_set_interest_key(key, OP_NOOP);
         if (selector_ret != SELECTOR_SUCCESS) { return ERROR; }
-        return REQ_RESOLVE;
+        return REQ_DNS;
     }
     else{
         LogError("Unknown connection type\n");
         return ERROR;
     }
-    return init_connection(parser, connection, key);
-
+    return init_connection(parser, socks, key);
 }
 
 static enum socks_state 
 req_read(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = connection->parsers->req_parser;
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    req_parser_init(socks->parsers->req_parser);
 
-    if(check_buff_and_receive(&connection->buffers->read_buff,
-                                    connection->cli_conn->socket) == -1){ return ERROR; }
+    if(check_buff_and_receive(&socks->buffers->read_buff,
+                                    socks->cli_conn->socket) == -1){ return ERROR; }
 
-    enum req_state parser_state = req_parse_full(parser, &connection->buffers->read_buff);
+    struct req_parser * parser = socks->parsers->req_parser;
+    enum req_state parser_state = req_parse_full(parser, &socks->buffers->read_buff);
     if (parser_state == REQ_DONE) {
         switch (parser->cmd) {
             case REQ_CMD_CONNECT:
-                return set_connection(connection, parser, parser->type, key);
+                return set_connection(socks, parser, parser->type, key);
             case REQ_CMD_BIND:
             case REQ_CMD_UDP:
-                return manage_req_error(parser, RES_CMD_UNSUPPORTED, connection, key);
+                return manage_req_error(parser, RES_CMD_UNSUPPORTED, socks, key);
             case REQ_CMD_NONE:
                 return DONE;
             default:
@@ -396,48 +377,50 @@ req_read(struct selector_key * key) {
     return REQ_READ;
 }
 
-static enum socks_state 
-req_resolve(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = connection->parsers->req_parser;
 
-    if (connection->curr_addr == NULL) {
-        if (connection->resolved_addr != NULL) {
-            freeaddrinfo(connection->resolved_addr);
-            connection->resolved_addr = NULL;
-            connection->curr_addr = NULL;
+static enum socks_state 
+req_dns(struct selector_key * key) {
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct req_parser * parser = socks->parsers->req_parser;
+
+    if (socks->curr_addr == NULL) {
+        if (socks->resolved_addr != NULL) {
+            freeaddrinfo(socks->resolved_addr);
+            socks->resolved_addr = NULL;
+            socks->curr_addr = NULL;
         }
-        return manage_req_error(parser, RES_HOST_UNREACHABLE, connection, key);
+        return manage_req_error(parser, RES_HOST_UNREACHABLE, socks, key);
     }
 
-    connection->src_addr_family = connection->curr_addr->ai_family;
-    connection->src_conn->addr_len = connection->curr_addr->ai_addrlen;
-    memcpy(&connection->src_conn->addr, connection->curr_addr->ai_addr,
-           connection->curr_addr->ai_addrlen);
-    connection->curr_addr = connection->curr_addr->ai_next;
+    socks->src_addr_family = socks->curr_addr->ai_family;
+    socks->src_conn->addr_len = socks->curr_addr->ai_addrlen;
+    memcpy(&socks->src_conn->addr, socks->curr_addr->ai_addr,
+           socks->curr_addr->ai_addrlen);
+    socks->curr_addr = socks->curr_addr->ai_next;
 
-    return init_connection(parser, connection, key);
+    return init_connection(parser, socks, key);
 }
 
+
 static void
-clean_resolved_addr(socks_conn_model * connection){
-    freeaddrinfo(connection->resolved_addr);
-    connection->resolved_addr = NULL;
+clean_resolved_addr(socks_conn_model * socks){
+    freeaddrinfo(socks->resolved_addr);
+    socks->resolved_addr = NULL;
 }
 
 static int
-set_response(struct req_parser * parser, int addr_family, socks_conn_model * connection){
+set_response(struct req_parser * parser, int addr_family, socks_conn_model * socks){
     parser->res_parser.state = RES_SUCCESS;
     parser->res_parser.port = parser->port;
     switch (addr_family) {
         case AF_INET:
             parser->res_parser.type = IPv4;
-            memcpy(&parser->res_parser.addr.ipv4, &connection->src_conn->addr,
+            memcpy(&parser->res_parser.addr.ipv4, &socks->src_conn->addr,
                 sizeof(parser->res_parser.addr.ipv4));
             break;
         case AF_INET6:
             parser->res_parser.type = IPv6;
-            memcpy(&parser->res_parser.addr.ipv6, &connection->src_conn->addr,
+            memcpy(&parser->res_parser.addr.ipv6, &socks->src_conn->addr,
                 sizeof(parser->res_parser.addr.ipv6));
             break;
         default:
@@ -446,121 +429,122 @@ set_response(struct req_parser * parser, int addr_family, socks_conn_model * con
     return 0;
 }
 
+
 static enum socks_state 
 req_connect(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = connection->parsers->req_parser;
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct req_parser * parser = socks->parsers->req_parser;
     int optval = 0;
-    int getsockopt_ret = getsockopt(connection->src_conn->socket, SOL_SOCKET, 
+    int getsockopt_ret = getsockopt(socks->src_conn->socket, SOL_SOCKET, 
                             SO_ERROR, &optval, &(socklen_t){sizeof(int)});
     if(getsockopt_ret == 0){
         if(optval != 0){
             if (parser->type == FQDN) {
-                selector_unregister_fd(key->s, connection->src_conn->socket, false);
-                close(connection->src_conn->socket);
-                return req_resolve(key);
+                selector_unregister_fd(key->s, socks->src_conn->socket, false);
+                close(socks->src_conn->socket);
+                return req_dns(key);
             }
-            return manage_req_error(parser, errno_to_req_response_state(optval), connection, key);
+            return manage_req_error(parser, errno_to_req_response_state(optval), socks, key);
         }
-        if(parser->type == FQDN){ clean_resolved_addr(connection);}
-        int ret_val = set_response(parser, connection->src_addr_family, connection);
-        if(ret_val == -1){ return manage_req_error(parser, RES_SOCKS_FAIL, connection, key);}
+        if(parser->type == FQDN){ clean_resolved_addr(socks);}
+        int ret_val = set_response(parser, socks->src_addr_family, socks);
+        if(ret_val == -1){ return manage_req_error(parser, RES_SOCKS_FAIL, socks, key);}
         selector_status selector_ret = selector_set_interest_key(key, OP_NOOP);
         if(selector_ret == 0){
-            selector_ret = selector_set_interest(key->s, connection->cli_conn->socket, OP_WRITE);
+            selector_ret = selector_set_interest(key->s, socks->cli_conn->socket, OP_WRITE);
             if(selector_ret == 0){
-                ret_val = req_response_message(&connection->buffers->write_buff, &parser->res_parser);
+                ret_val = req_response_message(&socks->buffers->write_buff, &parser->res_parser);
                 if(ret_val != -1){ return REQ_WRITE; }
             }
         }
         return ERROR;
     }
-    if(parser->type == FQDN){ clean_resolved_addr(connection);}
-    return manage_req_error(parser, RES_SOCKS_FAIL, connection, key);
+    if(parser->type == FQDN){ clean_resolved_addr(socks);}
+    return manage_req_error(parser, RES_SOCKS_FAIL, socks, key);
 }
+
 
 static enum socks_state 
 req_write(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct req_parser * parser = connection->parsers->req_parser;
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct req_parser * parser = socks->parsers->req_parser;
 
-    if(check_buff_and_send(&connection->buffers->write_buff, connection->cli_conn->socket) == -1){
+    if(check_buff_and_send(&socks->buffers->write_buff, socks->cli_conn->socket) == -1){
         LogError("Error sending bytes to client socket.");
         return ERROR;
     }
 
 
-    conn_information(connection);
-    if(buffer_can_read(&connection->buffers->write_buff)){ return REQ_WRITE; }
+    conn_information(socks);
+    if(buffer_can_read(&socks->buffers->write_buff)){ return REQ_WRITE; }
     if(parser->res_parser.state != RES_SUCCESS){return DONE; }
     selector_status selector_ret = selector_set_interest_key(key, OP_READ);
     if(selector_ret == SELECTOR_SUCCESS){
-        selector_ret = selector_set_interest(key->s, connection->src_conn->socket, OP_READ);
+        selector_ret = selector_set_interest(key->s, socks->src_conn->socket, OP_READ);
         return selector_ret == SELECTOR_SUCCESS?COPY:ERROR;
     }
     return ERROR;
 }
 
 static int
-init_copy_structure(socks_conn_model * connection, struct copy_model_t * copy,
+init_copy_structure(socks_conn_model * socks, struct copy_model_t * copy,
                     int which){
     if(which == CLI){
-        copy->fd = connection->cli_conn->socket;
-        copy->read_buff = &connection->buffers->read_buff;
-        copy->write_buff = &connection->buffers->write_buff;
-        copy->other = &connection->src_copy;
+        copy->fd = socks->cli_conn->socket;
+        copy->read_buff = &socks->buffers->read_buff;
+        copy->write_buff = &socks->buffers->write_buff;
+        copy->aux = &socks->src_copy;
     }
     else if(which == SRC){
-        copy->fd = connection->src_conn->socket;
-        copy->read_buff = &connection->buffers->write_buff;
-        copy->write_buff = &connection->buffers->read_buff;
-        copy->other = &connection->cli_copy;
+        copy->fd = socks->src_conn->socket;
+        copy->read_buff = &socks->buffers->write_buff;
+        copy->write_buff = &socks->buffers->read_buff;
+        copy->aux = &socks->cli_copy;
     }
     else{
         LogError("Error initializng copy structures\n");
         return -1;
     }
     copy->interests = OP_READ;
-    copy->connection_interests = OP_READ | OP_WRITE;
+    copy->int_connection = OP_READ | OP_WRITE;
     return 0;
 }
 
 static void 
-copy_init(unsigned state, struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct copy_model_t * copy = &connection->cli_copy;
-    int init_ret = init_copy_structure(connection, copy, CLI);
+copy_on_arrival(unsigned state, struct selector_key * key) {
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct copy_model_t * copy = &socks->cli_copy;
+    int init_ret = init_copy_structure(socks, copy, CLI);
     if(init_ret == -1){
-        fprintf(stdout, "Error initializng copy structures\n");
+        LogError("Error initializng copy structures\n");
         //return ERROR;
     }
-    copy = &connection->src_copy;
-    init_ret = init_copy_structure(connection, copy, SRC);
+    copy = &socks->src_copy;
+    init_ret = init_copy_structure(socks, copy, SRC);
     if(init_ret == -1){
         LogError("Error initializng copy structures\n");
         //return ERROR;
     }
 
     if(sniffer_is_on()){
-        connection->pop3_parser = malloc(sizeof(pop3_parser));
-        pop3_parser_init(connection->pop3_parser); 
-        if(connection->pop3_parser == NULL)
-            printf("QUILOMBO\n");    
+        socks->pop3_parser = malloc(sizeof(pop3_parser));
+        pop3_parser_init(socks->pop3_parser); 
+        if(socks->pop3_parser == NULL)
+            LogError("Pop3Parser is null\n");    
     }
 }
-
 static struct copy_model_t *
-get_copy(int fd, int cli_sock, int src_sock, socks_conn_model * connection){
-    return fd == cli_sock? &connection->cli_copy:
-           fd == src_sock? &connection->src_copy:
+get_copy(int fd, int cli_sock, int src_sock, socks_conn_model * socks){
+    return fd == cli_sock? &socks->cli_copy:
+           fd == src_sock? &socks->src_copy:
            NULL;
 }
 
 static enum socks_state 
 copy_read(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct copy_model_t * copy = get_copy(key->fd, connection->cli_conn->socket, 
-                                    connection->src_conn->socket, connection);
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct copy_model_t * copy = get_copy(key->fd, socks->cli_conn->socket, 
+                                    socks->src_conn->socket, socks);
     if(copy == NULL){
         LogError("Copy is null\n");
         return ERROR;
@@ -572,49 +556,49 @@ copy_read(struct selector_key * key) {
         }
 
         if(bytes_read > 0){
-            copy->other->interests = copy->other->interests | OP_WRITE;
-            copy->other->interests = copy->other->interests & copy->other->connection_interests;
-            selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture error?
+            copy->aux->interests = copy->aux->interests | OP_WRITE;
+            copy->aux->interests = copy->aux->interests & copy->aux->int_connection;
+            selector_set_interest(key->s, copy->aux->fd, copy->aux->interests); //TODO: Capture error?
 
-            if(ntohs(connection->parsers->req_parser->port) == POP3_PORT && 
-                connection->pop3_parser != NULL && sniffer_is_on()){
-                if(pop3_parse(connection->pop3_parser, copy->write_buff) == POP3_DONE){
-                    pass_information(connection);
+            if(ntohs(socks->parsers->req_parser->port) == POP3_PORT && 
+                socks->pop3_parser != NULL && sniffer_is_on()){
+                if(pop3_parse(socks->pop3_parser, copy->write_buff) == POP3_DONE){
+                    pass_information(socks);
                 }
             }
             return COPY;
         }
 
-        copy->connection_interests = copy->connection_interests & ~OP_READ;
-        copy->interests = copy->interests & copy->connection_interests;
+        
+        copy->int_connection = copy->int_connection & ~OP_READ;
+        copy->interests = copy->interests & copy->int_connection;
         selector_set_interest(key->s, copy->fd, copy->interests); //TODO: Capture selector error?
         // https://stackoverflow.com/questions/570793/how-to-stop-a-read-operation-on-a-socket
         // man -s 2 shutdown
         shutdown(copy->fd, SHUT_RD);
-        copy->other->connection_interests = 
-            copy->other->connection_interests & OP_READ;
+        copy->aux->int_connection = 
+            copy->aux->int_connection & OP_READ;
         
         if(!buffer_can_read(copy->write_buff)){
-            copy->other->interests &= copy->other->connection_interests;
-            selector_set_interest(key->s, copy->other->fd, copy->other->interests);
-            shutdown(copy->other->fd, SHUT_WR);
+            copy->aux->interests &= copy->aux->int_connection;
+            selector_set_interest(key->s, copy->aux->fd, copy->aux->interests);
+            shutdown(copy->aux->fd, SHUT_WR);
         }
 
 
-        return copy->connection_interests == OP_NOOP?
-                (copy->other->connection_interests == OP_NOOP?
+        return copy->int_connection == OP_NOOP?
+                (copy->aux->int_connection == OP_NOOP?
                 DONE:COPY):COPY;
     }
-    copy->interests = (copy->interests & OP_WRITE) & copy->connection_interests;
+    copy->interests = (copy->interests & OP_WRITE) & copy->int_connection;
     selector_set_interest(key->s, key->fd, copy->interests);
     return COPY;
 }
-
 static enum socks_state 
 copy_write(struct selector_key * key) {
-    socks_conn_model * connection = (socks_conn_model *)key->data;
-    struct copy_model_t * copy = get_copy(key->fd, connection->cli_conn->socket, 
-                                    connection->src_conn->socket, connection);
+    socks_conn_model * socks = (socks_conn_model *)key->data;
+    struct copy_model_t * copy = get_copy(key->fd, socks->cli_conn->socket, 
+                                    socks->src_conn->socket, socks);
     if(copy == NULL){
         LogError("Copy is null\n");
         return ERROR;
@@ -629,13 +613,13 @@ copy_write(struct selector_key * key) {
 
     //buffer_read_adv(copy->read_buff, bytes_sent);
     add_bytes_transferred((long)bytes_sent);
-    copy->other->interests = (copy->other->interests | OP_READ) & copy->other->connection_interests;
-    selector_set_interest(key->s, copy->other->fd, copy->other->interests); //TODO: Capture return?
+    copy->aux->interests = (copy->aux->interests | OP_READ) & copy->aux->int_connection;
+    selector_set_interest(key->s, copy->aux->fd, copy->aux->interests); //TODO: Capture return?
 
     if (!buffer_can_read(copy->read_buff)) {
-        copy->interests = (copy->interests & OP_READ) & copy->connection_interests;
+        copy->interests = (copy->interests & OP_READ) & copy->int_connection;
         selector_set_interest(key->s, copy->fd, copy->interests);
-        uint8_t still_write = copy->connection_interests & OP_WRITE;
+        uint8_t still_write = copy->int_connection & OP_WRITE;
         if(still_write == 0){
             shutdown(copy->fd, SHUT_WR);
         }
@@ -644,24 +628,16 @@ copy_write(struct selector_key * key) {
 }
 
 static const struct state_definition states[] = {
-    /*{
+    {
         .state = HELLO_READ,
+        .on_read_ready = hello_read,
     },
     {
         .state = HELLO_WRITE,
-    },*/
-    {
-        .state = CONN_READ,
-        .on_arrival = conn_read_init,
-        .on_read_ready = conn_read,
-    },
-    {
-        .state = CONN_WRITE,
-        .on_write_ready = conn_write,
+        .on_write_ready = hello_write,
     },
     {
         .state = AUTH_READ,
-        .on_arrival = auth_read_init,
         .on_read_ready = auth_read,
     },
     {
@@ -670,7 +646,6 @@ static const struct state_definition states[] = {
     },
     {
         .state = REQ_READ,
-        .on_arrival = req_read_init,
         .on_read_ready = req_read,
     },
     {
@@ -678,8 +653,8 @@ static const struct state_definition states[] = {
         .on_write_ready = req_write,
     },
     {
-        .state = REQ_RESOLVE,
-        .on_block_ready = req_resolve,
+        .state = REQ_DNS,
+        .on_block_ready = req_dns,
     },
     {
         .state = REQ_CONNECT,
@@ -687,7 +662,7 @@ static const struct state_definition states[] = {
     },
     {
         .state = COPY,
-        .on_arrival = copy_init,
+        .on_arrival = copy_on_arrival,
         .on_read_ready = copy_read,
         .on_write_ready = copy_write,
     },
@@ -725,7 +700,7 @@ new_socks_conn() {
     memset(socks->parsers->auth_parser, 0x00, sizeof(*(socks->parsers->auth_parser)));
     memset(socks->parsers->req_parser, 0x00, sizeof(*(socks->parsers->req_parser)));
 
-    socks->stm.initial = CONN_READ;
+    socks->stm.initial = HELLO_READ;
     socks->stm.max_state = DONE;
     socks->stm.states = states;
     stm_init(&socks->stm);

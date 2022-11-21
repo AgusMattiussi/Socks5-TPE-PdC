@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 #include "../include/buffer.h"
 
 /*
@@ -66,6 +67,17 @@ typedef enum pop3_state {
     POP3_DONE
 } pop3_state;
 
+typedef struct node {
+    uint8_t * username;
+    uint8_t * password;
+    struct node * next;
+} node;
+
+typedef struct users_list {
+    node * first;
+    int size;
+} users_list;
+
 typedef struct pop3_parser {
     pop3_state state;
     buffer buff;
@@ -75,6 +87,12 @@ typedef struct pop3_parser {
     uint16_t write_ptr;
     bool user_done;
 } pop3_parser;
+
+users_list * init_users_list();
+
+void free_list(users_list * list);
+
+users_list * get_sniffed_users();
 
 void pop3_parser_init(pop3_parser * parser);
 

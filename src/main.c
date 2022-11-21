@@ -36,7 +36,7 @@
 
 #define DEST_PORT 9090
 #define MAX_ADDR_BUFFER 128
-#define INITIAL_N 20
+#define INITIAL_N 1023
 
 //void socksv5_passive_accept(struct selector_key * key);
 static bool done = false;

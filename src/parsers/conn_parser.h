@@ -10,7 +10,7 @@
 #include "../logger/logger.h"
 #include "../users/user_mgmt.h"
 
-const static uint8_t SOCKS_VERSION = 0x05;
+static const uint8_t SOCKS_VERSION = 0x05;
 
 enum auth_method{
     NO_AUTH = 0x00,
@@ -37,6 +37,5 @@ struct conn_parser {
 void start_connection_parser(struct conn_parser * parser);
 void conn_parse_byte(struct conn_parser * parser, uint8_t to_parse);
 enum conn_state conn_parse_full(struct conn_parser * parser, buffer * buff);
-enum conn_state mng_conn_parse_full(struct conn_parser * parser, buffer * buff);
 
 #endif

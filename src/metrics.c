@@ -65,3 +65,8 @@ long get_historic_total(){
 long get_bytes_transferred(){
     return metrics->bytes_transferred;
 }
+
+void
+free_metrics(){
+    free(metrics);
+}
