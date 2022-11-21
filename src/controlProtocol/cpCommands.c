@@ -152,10 +152,6 @@ char * getSniffedUsersList(cpCommandParser * parser){
 
     /* Obtenemos la lista de usuario sniffeados */
     users_list * userList = get_sniffed_users();
-    if(userList == NULL){
-        printf("watafai es null??\n");
-        return NULL;
-    }
     
     printf("xd2\n");
     int reallocCount = 0;
@@ -166,8 +162,12 @@ char * getSniffedUsersList(cpCommandParser * parser){
     int ansSize = strlen(ret);
     printf("xd4\n");
     /* Copiamos el titulo del CSV */
-    sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList->size + 1, POP3_CSV_TITLE);
+    sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList == NULL ? 1 : userList->size + 1, POP3_CSV_TITLE);
     printf("xd5\n");
+    if(userList == NULL || userList->size == 0){
+        return ret;
+    }
+
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
         printf("xd6\n");

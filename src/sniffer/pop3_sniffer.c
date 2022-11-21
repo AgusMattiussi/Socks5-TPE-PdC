@@ -144,6 +144,9 @@ void pop3_parser_init(pop3_parser * parser){
     parser->read_ptr = 0;
     parser->write_ptr = 0;
     parser->user_done = false;
+
+    if(sniffed_users == NULL) 
+        sniffed_users = init_users_list();
 }
 
 pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
@@ -156,10 +159,7 @@ pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
 
     pop3_state ret = parser->state;
 
-    if(sniffed_users == NULL) 
-        sniffed_users = init_users_list();
-
-
+    
     if(ret == POP3_DONE) {
         add_node(sniffed_users, parser->user, parser->pass);
         pop3_parser_init(parser); //reinicio el parser
