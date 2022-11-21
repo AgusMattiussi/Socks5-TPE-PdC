@@ -65,7 +65,6 @@ typedef struct controlProtConn {
     uint8_t writeBufferData[BUFFER_SIZE];
 
     struct state_machine connStm;
-    // TODO: Se usa?
     controlProtStmState currentState;
 
     //TODO: Deberia ser un puntero? (para que se inicialice a demanda)
@@ -74,7 +73,13 @@ typedef struct controlProtConn {
 
     //TODO: Deberia ser una lista?
     //struct controlProtConn * nextConn;
+
+    bool validPassword;
+
+    /* Variables para manejar casos donde el protocolo ya hubiese escrito
+        una respuesta al buffer de salida, pero TCP no la hubiera enviado aun */
     bool helloWritten;
+    bool authAnsWritten;
 } controlProtConn;
 
 controlProtConn * newControlProtConn(int fd);

@@ -5,35 +5,32 @@ void initCpAuthParser(cpAuthParser * parser){
     parser->passLen = 0;
 }
 
-void cpapParseByte(cpAuthParser * parser, uint8_t byte) {
+cpAuthParserState cpapParseByte(cpAuthParser * parser, uint8_t byte) {
     switch (parser->currentState){
         case CPAP_CHECK_AUTH_COMMAND:
             printf("[CPAP_CHECK_AUTH_COMMAND] - %hhx (%c)\n", byte, byte);
-            // TODO: Cambiar a 0x1
-            if(byte == CP_AUTHENTICATION/* AUTH_COMMAND */)
-                parser->currentState = CPAP_HAS_DATA;               
-            else
-                parser->currentState = CPAP_ERROR;
+            if(byte == CP_AUTHENTICATION)
+                return CPAP_HAS_DATA;               
             break;
         case CPAP_HAS_DATA:
             printf("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte);
-            // TODO: Cambiar a 0x1
-            if(byte == 0x1/* '1' */)  // Deberia haber una sola linea (<password>\n)
-                parser->currentState = CPAP_READ_PASSWORD;
-            else 
-                parser->currentState = CPAP_ERROR;
+            if(byte == 0x1/* '1' */)    // Deberia haber una sola linea (<password>\n)
+                return CPAP_READ_PASSWORD;
             break;
         case CPAP_READ_PASSWORD:
             printf("[CPAP_READ_PASSWORD] - %hhx (%c)\n", byte, byte);
-            if(byte == '\n'){           // Termine de leer la password
+            if(byte == '\n'){           // Termine de leer la password, la cierro con '\0'
                 parser->inputPassword[parser->passLen++] = '\0';
-                parser->currentState = CPAP_DONE;
+                return CPAP_DONE;
             } else if (parser->passLen == MAX_PASS_LEN){
-                parser->currentState = CPAP_ERROR;
+                return CPAP_ERROR;
             }
             parser->inputPassword[parser->passLen++] = byte;
+            return CPAP_READ_PASSWORD;
             break;
         default:
-            parser->currentState = CPAP_ERROR;
+            break;
     }
+
+    return CPAP_ERROR;
 }

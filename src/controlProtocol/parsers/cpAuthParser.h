@@ -25,7 +25,7 @@ typedef struct cpAuthParser {
 } cpAuthParser;
 
 void initCpAuthParser(cpAuthParser * parser);
-void cpapParseByte(cpAuthParser * parser, uint8_t byte);
+cpAuthParserState cpapParseByte(cpAuthParser * parser, uint8_t byte);
 
 
 #endif

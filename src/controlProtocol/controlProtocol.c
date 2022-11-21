@@ -11,8 +11,6 @@ static unsigned cpError(struct selector_key * key);
 static controlProtStmState executeRead(struct selector_key * key);
 static controlProtStmState executeWrite(struct selector_key * key);
 
-static int validPassword = false;
-
 static const struct state_definition controlProtStateDef[] = {
     {
         .state = CP_HELLO,
@@ -63,11 +61,10 @@ static void initStm(struct state_machine * stm){
 }
 
 static unsigned cpError(struct selector_key * key){
-    printf("\nERROR CP_ERROR. Reiniciando...\n");
+    printf("\nERROR CP_ERROR. Cerrando Conexion\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
-    initCpAuthParser(&cpc->authParser);
-    initCpCommandParser(&cpc->commandParser);
-    return CP_HELLO;
+    freeControlProtConn(cpc, key->s);
+    return CP_ERROR;
 }
 
 
@@ -95,6 +92,8 @@ controlProtConn * newControlProtConn(int fd){
         new->interests = OP_WRITE;  // El protocolo comienza escribiendo HELLO
         new->currentState = CP_HELLO;
         new->helloWritten = false;
+        new->validPassword = false;
+        new->authAnsWritten = false;
     }
     return new;
 }
@@ -123,6 +122,7 @@ void cpWriteHandler(struct selector_key * key){
     cpc->currentState = stm_handler_write(&cpc->connStm, key);
     if(cpc->currentState == CP_ERROR){
         freeControlProtConn(cpc, key->s);
+        return;
     }
     // TODO: que pasa si entre aca por segunda vez?
 
@@ -142,11 +142,11 @@ void cpWriteHandler(struct selector_key * key){
 
         /* Si no tengo nada mas que enviarle al cliente, apago el interes 
             de escritura */
-        //TODO: Funcara?
-        if(bytesSent == bytesLeft){
+        //TODO: Funcara? Validar que los parsers esten done?
+        /* if(bytesSent == bytesLeft){
             cpc->interests &= !OP_WRITE;
             selector_set_interest_key(key, cpc->interests);
-        }
+        } */
     }
 
 }
@@ -193,8 +193,8 @@ static controlProtStmState helloWrite(struct selector_key * key){
 
     /* Si ya envie el HELLO al cliente, paso al estado de CP_AUTH */
     if(cpc->helloWritten && !buffer_can_read(cpc->writeBuffer)){
-        /* TODO: cpc->interests = OP_READ;
-        selector_set_interest_key(key, cpc->interests); */
+        cpc->interests = OP_READ;
+        selector_set_interest_key(key, cpc->interests);
         return CP_AUTH;
     }
 
@@ -234,7 +234,7 @@ static controlProtStmState helloWrite(struct selector_key * key){
         cpc->helloWritten = true;
     }
 
-    /* Sigoe en CP_HELLO hasta haber enviado el HELLO */
+    /* Sigo en CP_HELLO hasta haber enviado el HELLO */
     return CP_HELLO;
 }
 
@@ -242,44 +242,33 @@ static controlProtStmState helloWrite(struct selector_key * key){
 static controlProtStmState authRead(struct selector_key * key){
     printf("[AUTH] authRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
+    cpAuthParser * parser =  &cpc->authParser;
 
     if(!buffer_can_read(cpc->readBuffer)){
         printf("[AUTH/authRead] Buffer Vacio: !buffer_can_read\n");
-        //TODO: Manejar error
-        return CP_AUTH;
+        //TODO: Si se desperto siempre hay algo para leer no?
+        return CP_ERROR;
     }
 
     size_t bytesLeft;
+    /* Voy a leer byte a byte, no necesito el puntero */
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
 
-    if(bytesLeft <= 0){
-        printf("[AUTH/authRead] Error: bytesLeft <= 0\n");
-        //TODO: Manejar
-    }
+    for (int i = 0; i < bytesLeft && parser->currentState != CPAP_DONE; i++){
+        parser->currentState = cpapParseByte(parser, buffer_read(cpc->readBuffer));
 
-    cpAuthParserState parserState;
-    for (int i = 0; i < bytesLeft && parserState != CPAP_DONE; i++){
-        cpapParseByte(&cpc->authParser, buffer_read(cpc->readBuffer));
-        parserState = cpc->authParser.currentState;
-
-        if(/* parserState == CPAP_DONE || */ parserState == CPAP_ERROR){
-            //TODO: Manejar error, (DONE antes de tiempo?)
-            printf("[AUTH/authRead] Error: CPAP_ERROR (en for)\n");
+        if(parser->currentState == CPAP_ERROR){
+            printf("[AUTH/authRead] Error: CPAP_ERROR parseando entrada\n");
             return CP_ERROR;
         }
     }
 
-    //TODO: Puede ser innecesario
-    if(parserState == CPAP_ERROR){
-        //TODO: Manejar error
-        printf("[AUTH/authRead] Error: CPAP_ERROR\n");
-        return CP_ERROR;
-    }
-
-    if(parserState == CPAP_DONE){
-        validPassword = validatePassword(&cpc->authParser);
+    /* Cuando termine de leer satisfactoriamente (al encontrar '\n'), cambio el
+        interes a OP_WRITE para responderle al cliente */
+    if(parser->currentState == CPAP_DONE){
+        cpc->validPassword = validatePassword(&cpc->authParser);
         selector_set_interest_key(key, OP_WRITE);
-        initCpAuthParser(&cpc->authParser); // Reinicio el Parser
+        initCpAuthParser(&cpc->authParser);         // Reinicio el Parser
     }
 
     return CP_AUTH;
@@ -289,19 +278,49 @@ static controlProtStmState authRead(struct selector_key * key){
 static controlProtStmState authWrite(struct selector_key * key){
     printf("[AUTH] authWrite\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
-    char authResult[10] = {'\0'};
+    char authResult[4];
     int arSize = 0;
 
-    if(!buffer_can_write(cpc->writeBuffer)){
-        //TODO: Manejar error
-        printf("[AUTH/authWrite] Error: !buffer_can_write\n");
+    /* Si ya escribi la respuesta y se la envie al cliente, puedo 
+        pasar al siguiente estado */
+    if(cpc->authAnsWritten && !buffer_can_read(cpc->writeBuffer)){
+        cpc->interests = OP_READ;
+        selector_set_interest_key(key, cpc->interests);
+        return CP_EXECUTE;
     }
 
-    if(validPassword){
-        printf("[AUTH/authWrite] Valid Password!\n");
+    /* Si ya escribi la respuesta, no queda nada por hacer 
+        hasta que TCP la haya enviado */
+    if(cpc->authAnsWritten)
+        return CP_AUTH;
+
+
+    /* Si el buffer de escritura esta lleno, no puedo seguir escribiendo 
+        en el hasta no haberle enviado mas bytes al cliente */
+    if(!buffer_can_write(cpc->writeBuffer)){
+        printf("[AUTH/authWrite] Error: !buffer_can_write\n");
+        return CP_AUTH;
+    }
+
+    if(cpc->validPassword){
+        printf("[AUTH/authWrite] Valid Password!\n");     
+        /* 
+            +--------+----------+------+
+            | STATUS | HAS_DATA | DATA |
+            +--------+----------+------+
+            |      1 |        0 | ---- |
+            +--------+----------+------+
+        */
         authResult[arSize++] = (char) STATUS_SUCCESS; // STATUS = 1 
         authResult[arSize++] = '\0';                  // HAS_DATA = 0
     } else {
+        /* 
+            +--------+----------+--------------+
+            | STATUS | HAS_DATA |     DATA     |
+            +--------+----------+--------------+
+            |      0 |        1 | <error-code> |
+            +--------+----------+--------------+ 
+        */
         printf("[AUTH/authWrite] Invalid Password :(\n");
         authResult[arSize++] = (char) STATUS_ERROR;   // STATUS = 0 
         authResult[arSize++] = '\1';                  // HAS_DATA = 1
@@ -312,22 +331,31 @@ static controlProtStmState authWrite(struct selector_key * key){
     size_t maxWrite;
     uint8_t * writePtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
 
+    /* Espacio insuficiente en el buffer de escritura para la respuesta. 
+        Nos mantenemos en este estado mientras se libera espacio */
     if(arSize > maxWrite){
-        //TODO: Buffer lleno. Manejar error
-        return CP_ERROR;
+        return CP_AUTH;
     }
 
     memcpy(writePtr, authResult, arSize);
     buffer_write_adv(cpc->writeBuffer, arSize);
 
+
     /* Cambiamos el interes a lectura, para pasar a CP_EXECUTE (o si 
         la contrasenia fue incorrecta, volver a CP_AUTH)*/
-    cpc->interests = OP_READ;
-    selector_set_interest_key(key, cpc->interests);
+    /* cpc->interests = OP_READ;
+    selector_set_interest_key(key, cpc->interests); */
 
-    if(!validPassword)
-        return CP_AUTH; 
-    return CP_EXECUTE;
+    /* Si la contraseña es invalida, volvemos a CP_AUTH para que el cliente 
+        intente nuevamente */
+    if(!cpc->validPassword){
+        cpc->interests = OP_READ;
+        selector_set_interest_key(key, cpc->interests);
+        return CP_AUTH;
+    }
+
+    cpc->authAnsWritten = true;
+    return CP_AUTH;
 }
 
 /* Leemos el comando enviado por el usuario */
