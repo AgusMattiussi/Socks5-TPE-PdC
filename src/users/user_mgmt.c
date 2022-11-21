@@ -67,47 +67,51 @@ finally:
     return -1;
 }
 
-uint8_t
+int
 user_exists_by_username(char * username){
     if(username == NULL){
         LogError("Username is invalid.");
-        goto finally;
+        return -1;
     }
     for(int i = 0; i < total_users; i++){
         if(strcmp(username, users[i]->name) == 0){
             return i;
         }
     }
-finally:
     return -1;
 }
 
 enum add_user_state 
 add_user(user_t * user){
     if(total_users == MAX_USERS){
-        fprintf(stdout, "Alcanzaste un máximo de usuarios.\n");
+        LogError("Alcanzaste un máximo de usuarios.\n");
         free(user);
         return ADD_MAX_USERS;
     }
     if(user_exists_by_username(user->name) != -1){
-        fprintf(stdout, "Usuario ya existe.\n");
+        LogError("Usuario ya existe.\n");
         free(user);
         return ADD_USER_EXISTS;
     }
     users[total_users] = malloc(sizeof(user_t));
     if(users[total_users] == NULL){
-        fprintf(stdout, "Error with malloc\n");
+        LogError("Error with malloc\n");
         free(user);
         return ADD_ERROR;
     }
-    users[total_users]->name = malloc(strlen(user->name));
-    users[total_users]->pass = malloc(strlen(user->pass));
+    users[total_users]->name = malloc(strlen(user->name) + 1);
+    users[total_users]->pass = malloc(strlen(user->pass) + 1);
+
     if(users[total_users]->name == NULL || users[total_users]->pass == NULL){
-        fprintf(stdout, "Error with malloc\n");
+        LogError("Error with malloc\n");
         return ADD_ERROR;
     }
     strcpy(users[total_users]->name, user->name);
     strcpy(users[total_users]->pass, user->pass);
+    //users[total_users]->name[strlen(users[total_users]->name)] = '\0';
+    //users[total_users]->pass[strlen(users[total_users]->pass)] = '\0';
+    //free(user->name); free(user->pass);
+
     total_users++;
     require_auth = true;
     return ADD_OK;

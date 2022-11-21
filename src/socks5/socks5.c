@@ -13,7 +13,6 @@ check_buff_and_receive(buffer * buff_ptr, int socket){
     size_t byte_n;
     uint8_t * write_ptr = buffer_write_ptr(buff_ptr, &byte_n);
     ssize_t n_received = recv(socket, write_ptr, byte_n, 0); //TODO:Flags?
-
     if(n_received <= 0) return -1;
     buffer_write_adv(buff_ptr, n_received);
     return n_received;
@@ -24,7 +23,6 @@ check_buff_and_send(buffer * buff_ptr, int socket){
     size_t n_available;
     uint8_t * read_ptr = buffer_read_ptr(buff_ptr, &n_available);
     ssize_t n_sent = send(socket, read_ptr, n_available, 0); //TODO: Flags?
-    
     if(n_sent == -1){ return -1; }
     buffer_read_adv(buff_ptr, n_sent);
     return n_sent;
@@ -133,10 +131,11 @@ hello_write(struct selector_key * key){
     if(ret_state == AUTH_DONE){ 
         uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
-        if(is_authenticated == -1){
+        /*if(is_authenticated == -1){
             LogError("Error authenticating user. Username or password are incorrect, or user does not exist. Exiting.\n");
+            
             return ERROR;
-        }
+        }*/
         set_curr_user((char*)parser->username);
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;        
@@ -196,23 +195,6 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
         LogError("Error detecting address type.");
         return -1;
     }
-
-    /*if(addr_type == IPv4){
-        length = IPv4_BYTES;
-        addr_ptr = (uint8_t *)&(parser->addr.ipv4.sin_addr);
-    }
-    else if(addr_type == IPv6){
-        length = IPv6_BYTES;
-        addr_ptr = parser->addr.ipv6.sin6_addr.s6_addr;
-    }
-    else if(addr_type == FQDN){
-        length = strlen((char *)parser->addr.fqdn);
-        addr_ptr = parser->addr.fqdn;
-    }
-    else{
-        LogError("Address type not recognized\n");
-        return -1;
-    }*/
 
     size_t space_needed = length + FIXED_RES_BYTES + (parser->type==FQDN);
     if (n_bytes < space_needed) {
@@ -534,7 +516,7 @@ copy_on_arrival(unsigned state, struct selector_key * key) {
     struct copy_model_t * copy = &socks->cli_copy;
     int init_ret = init_copy_structure(socks, copy, CLI);
     if(init_ret == -1){
-        fprintf(stdout, "Error initializng copy structures\n");
+        LogError("Error initializng copy structures\n");
         //return ERROR;
     }
     copy = &socks->src_copy;
@@ -548,7 +530,7 @@ copy_on_arrival(unsigned state, struct selector_key * key) {
         socks->pop3_parser = malloc(sizeof(pop3_parser));
         pop3_parser_init(socks->pop3_parser); 
         if(socks->pop3_parser == NULL)
-            printf("QUILOMBO\n");    
+            LogError("Pop3Parser is null\n");    
     }
 }
 static struct copy_model_t *
