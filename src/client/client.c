@@ -10,6 +10,7 @@
 #include "commands.h"
 #include <string.h>
 
+int proxy_socket = -1;
 static char * version;
 char * commandStr[] = {
         "help",
@@ -111,7 +112,10 @@ int analyze_return(char ret) {
     return 0;
 }
 
-int new_command(int fd, char * buf) {
+int new_command() {
+
+    char buf[MAXLEN] = {0};
+ 
     fgets(buf, MAXLEN, stdin);
 
     buf[strlen(buf)-1] = '\0';
@@ -149,7 +153,7 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = double_arg_command(COMMAND_ADD_USER, arg, arg2, fd);
+            ret = double_arg_command(COMMAND_ADD_USER, arg, arg2, proxy_socket);
             break;
         case 3:
             aux = strtok(NULL, " ");
@@ -159,7 +163,7 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = single_arg_command(COMMAND_DELETE_USER, arg, fd);
+            ret = single_arg_command(COMMAND_DELETE_USER, arg, proxy_socket);
             break;
         case 4:
             aux = strtok(NULL, " ");
@@ -173,31 +177,31 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = double_arg_command(COMMAND_EDIT_PASSWORD, arg, arg2, fd);
+            ret = double_arg_command(COMMAND_EDIT_PASSWORD, arg, arg2, proxy_socket);
             break;
         case 5:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = list_users(fd);
+            ret = list_users(proxy_socket);
             break;
         case 6:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = obtain_metrics(fd);
+            ret = obtain_metrics(proxy_socket);
             break;
         case 7:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = dissector(1, fd);
+            ret = dissector(1, proxy_socket);
             break;
         case 8:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = dissector(0, fd);
+            ret = dissector(0, proxy_socket);
             break;
         default:
             goto error;
@@ -226,8 +230,6 @@ int mng_connect(char * addr, char * port) {
     if ((status = getaddrinfo(addr, port, &addrCriteria, &servAddr)) != 0) {
         return -1;
     }
-
-    int proxy_socket = -1;
 
     for (struct addrinfo * dir = servAddr; dir != NULL; dir = dir->ai_next) {
         
@@ -274,7 +276,7 @@ int mng_connect(char * addr, char * port) {
     
 
     while(!done) {
-        done = new_command(proxy_socket, buf);
+        done = new_command();
         }
     
     return 0;
