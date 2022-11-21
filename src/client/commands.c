@@ -123,7 +123,8 @@ void help() {
     printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
     printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
     printf("editpass <newpass>: editar contraseña\n\n");
-    printf("list: listar usuarios y contraseñas descubiertas\n\n");
+    printf("list: listar usuarios del servidor\n\n");
+    printf("listdiss: listar usuarios y contraseñas descubiertas\n\n");
     printf("metrics: obtener métricas de uso del servidor\n\n");
     printf("dis: prender password dissector\n\n");
     printf("disoff: apagar password dissector\n\n");
@@ -183,9 +184,9 @@ char double_arg_command(int command, char *username, char * pass, int fd) {
     return receive_simple_response(fd);
 }
 
-char list_users(int fd) {
+char list_users(int command,int fd) {
 
-    send_simple(fd, COMMAND_LIST_USERS);
+    send_simple(fd, command);
 
     return parse_users_message(fd, NULL);
 }

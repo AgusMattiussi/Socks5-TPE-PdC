@@ -17,10 +17,11 @@ char * commandStr[] = {
         "adduser",
         "deleteuser",
         "editpass",
-        "list",
+        "listdiss",
         "metrics",
         "dis",
-        "disoff"
+        "disoff",
+        "list"
 };
 
 typedef enum controlProtErrorCode{
@@ -183,7 +184,7 @@ int new_command() {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = list_users(proxy_socket);
+            ret = list_users(COMMAND_LIST_DISSECTOR, proxy_socket);
             break;
         case 6:
             aux = strtok(NULL, " ");
@@ -202,6 +203,12 @@ int new_command() {
             if(aux != NULL)
                 goto error;
             ret = dissector(0, proxy_socket);
+            break;
+        case 9:
+            aux = strtok(NULL, " ");
+            if(aux != NULL)
+                goto error;
+            ret = list_users(COMMAND_LIST_USERS, proxy_socket);
             break;
         default:
             goto error;
