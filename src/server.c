@@ -223,8 +223,6 @@ finally:
 
 
 void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * mng_port){
-    printf("Entro a start server\n");
-
     int fd_socks_ipv4 = -1, fd_socks_ipv6 = -1, fd_mng_ipv4 = -1, fd_mng_ipv6 = -1;
 
     fd_socks_ipv4 = start_socket(socks_addr, socks_port, &passive_socket_fd_handler, AF_UNSPEC);
