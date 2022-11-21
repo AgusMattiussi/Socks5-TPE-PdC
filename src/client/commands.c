@@ -33,7 +33,7 @@ char parse_users_message(int fd, char * offset) {
     char str[2] = {0};
     str[0] = TOKEN;
 
-    char * current_user = strtok(&response_buf[pos], str);
+    char * current_user = strtok((char *) &response_buf[pos], str);
     if(response_buf[0] == TOKEN) {
         printf("%s\n", offset);
         printf("%s\n", current_user);
@@ -89,7 +89,7 @@ char parse_metrics_message(int fd) {
         return (char)response_buf[2];
     }
 
-    char * metrics = strtok(&response_buf[2], "\n");
+    char * metrics = strtok((char *)&response_buf[2], "\n");
     printf("%s\n", metrics);
     metrics = strtok(NULL, "\n");
     printf("%s\n", metrics);

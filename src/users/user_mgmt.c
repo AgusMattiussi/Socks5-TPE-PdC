@@ -140,7 +140,7 @@ change_password(char * username, char * new_password){
     return 0;
 }
 
-user_t *
+user_t **
 get_all_users(){
     return users;
 }

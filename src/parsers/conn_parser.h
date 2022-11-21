@@ -10,7 +10,7 @@
 #include "../logger/logger.h"
 #include "../users/user_mgmt.h"
 
-const static uint8_t SOCKS_VERSION = 0x05;
+static const uint8_t SOCKS_VERSION = 0x05;
 
 enum auth_method{
     NO_AUTH = 0x00,
