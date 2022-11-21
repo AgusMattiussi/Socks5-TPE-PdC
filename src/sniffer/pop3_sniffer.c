@@ -19,8 +19,10 @@ static void free_node(node * first_node){
 }
 
 void free_list(users_list * list) {
-    free_node(list->first);
-    free(list);
+    if(list != NULL) {
+        free_node(list->first);
+        free(list);
+    }
 }
 
 static node * add_rec(node * first, uint8_t * username, uint8_t * password, int * flag) {

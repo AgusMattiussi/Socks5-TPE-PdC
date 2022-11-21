@@ -1,5 +1,7 @@
 #ifndef METRICS_H
 #define METRICS_H
+
+#include "../sniffer/pop3_sniffer.h"
 /*
    6.  implementar mecanismos que permitan recolectar métricas que
        ayuden a monitorear la operación del sistema.
@@ -27,5 +29,6 @@ long get_current_mgmt();
 long get_historic_total();
 long get_current_total();
 long get_bytes_transferred();
+void free_metrics();
 
 #endif

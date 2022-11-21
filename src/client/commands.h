@@ -20,11 +20,12 @@
 #define COMMAND_ADD_USER '1'
 #define COMMAND_DELETE_USER '2'
 #define COMMAND_EDIT_PASSWORD '3'
-#define COMMAND_LIST_USERS '4'
+#define COMMAND_LIST_DISSECTOR '4'
 #define COMMAND_OBTAIN_METRICS '5'
 #define COMMAND_DISSECTOR_ON '6'
 #define COMMAND_DISSECTOR_OFF '7'
-#define COMMAND_CANT 8
+#define COMMAND_LIST_USERS '8'
+#define COMMAND_CANT 9
 #define HAS_NOT_DATA 0
 #define HAS_DATA 1
 #define MAXLEN 1024
@@ -34,7 +35,7 @@ void help() ;
 int admin_auth(int fd, char * buf);
 char single_arg_command(int command, char * username, int fd);
 char double_arg_command(int command, char * username, char * pass, int fd);
-char list_users(int fd);
+char list_users(int command, int fd);
 char obtain_metrics(int fd);
 char dissector(int on, int fd);
 
