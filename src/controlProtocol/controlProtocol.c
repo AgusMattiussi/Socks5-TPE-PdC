@@ -94,16 +94,21 @@ controlProtConn * newControlProtConn(int fd){
         new->helloWritten = false;
         new->validPassword = false;
         new->authAnsWritten = false;
+        new->execAnsWritten = false;
+        new->execAnswer = NULL;
     }
     return new;
 }
 
 void freeControlProtConn(controlProtConn * cpc, fd_selector s){
+    printf("\nLIBERANDO CPC\n");
+
     if(cpc == NULL)
         return;
 
     free(cpc->readBuffer);
     free(cpc->writeBuffer);
+    //free(cpc->execAnswer);
     selector_unregister_fd(s, cpc->fd, false);
     close(cpc->fd);
     free(cpc);
@@ -121,7 +126,7 @@ void cpWriteHandler(struct selector_key * key){
         Actualizo el estado actual */
     cpc->currentState = stm_handler_write(&cpc->connStm, key);
     if(cpc->currentState == CP_ERROR){
-        freeControlProtConn(cpc, key->s);
+        //freeControlProtConn(cpc, key->s);
         return;
     }
     // TODO: que pasa si entre aca por segunda vez?
@@ -308,7 +313,7 @@ static controlProtStmState authWrite(struct selector_key * key){
             +--------+----------+------+
             | STATUS | HAS_DATA | DATA |
             +--------+----------+------+
-            |      1 |        0 | ---- |
+            |      1 |        0 |      |
             +--------+----------+------+
         */
         authResult[arSize++] = (char) STATUS_SUCCESS; // STATUS = 1 
@@ -340,12 +345,6 @@ static controlProtStmState authWrite(struct selector_key * key){
     memcpy(writePtr, authResult, arSize);
     buffer_write_adv(cpc->writeBuffer, arSize);
 
-
-    /* Cambiamos el interes a lectura, para pasar a CP_EXECUTE (o si 
-        la contrasenia fue incorrecta, volver a CP_AUTH)*/
-    /* cpc->interests = OP_READ;
-    selector_set_interest_key(key, cpc->interests); */
-
     /* Si la contraseña es invalida, volvemos a CP_AUTH para que el cliente 
         intente nuevamente */
     if(!cpc->validPassword){
@@ -358,12 +357,11 @@ static controlProtStmState authWrite(struct selector_key * key){
     return CP_AUTH;
 }
 
-/* Leemos el comando enviado por el usuario */
+/* Leemos el comando enviado por el cliente */
 static controlProtStmState executeRead(struct selector_key * key){
     printf("[EXECUTE] executeRead\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
     cpCommandParser * parser =  &cpc->commandParser;
-
 
     if(!buffer_can_read(cpc->readBuffer)){
         printf("[EXECUTE/executeRead] Buffer Vacio: !buffer_can_read\n");
@@ -372,94 +370,123 @@ static controlProtStmState executeRead(struct selector_key * key){
     }
 
     size_t bytesLeft;
+    /* Voy a leer byte a byte, no necesito el puntero */
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
-
-    if(bytesLeft <= 0){
-        printf("[EXECUTE/executeRead] Error: bytesLeft <= 0\n");
-        //TODO: Manejar
-    }
     
     for(int i = 0; i < bytesLeft && parser->currentState != CPCP_DONE; i++){
         parser->currentState = cpcpParseByte(parser, buffer_read(cpc->readBuffer));
         
         if(parser->currentState == CPCP_ERROR){
-            printf("[EXECUTE/executeRead] CPCP_ERROR (en for)\n");
-            //TODO: Manejar error
+            printf("[EXECUTE/executeRead] CPCP_ERROR parseando entrada\n");
             return CP_ERROR;
         }
     }
-
-    //TODO: Puede ser innecesario
-    if(parser->currentState == CPCP_ERROR){
-        //TODO: Manejar error
-        printf("[EXECUTE/executeRead] Error: CPAP_ERROR\n");
-        return CP_ERROR;
-    }
     
+    /* Cuando termine de leer el comando, cambio el interes a escritura para 
+        responderle al cliente */
     if(parser->currentState == CPCP_DONE){
-        // TODO: Copiar Comando
+        /* Cerramos el string con un '\0' */
         parser->data[parser->dataSize] = '\0';
-        printf("\n\nCOMANDO: %d - DATA: %s\n\n", parser->code, parser->data);
-        selector_set_interest_key(key, OP_WRITE);
-        //initCpCommandParser(parser); // Reinicio el Parser
+        cpc->interests = OP_WRITE;
+        selector_set_interest_key(key, cpc->interests);
     }
 
     return CP_EXECUTE;
 }
 
 /* Le enviamos al cliente la respuesta a su comando */
-
 static controlProtStmState executeWrite(struct selector_key * key){
     printf("[EXECUTE] executeWrite\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
     cpCommandParser * parser =  &cpc->commandParser;
-    char * answer = NULL;
 
-    // TODO: Cambiar por array de punteros a funcion?
-    switch (parser->code){
-        case CP_ADD_USER:
-            addProxyUser(parser, answer);
-            break;
-        case CP_REM_USER:
-            removeProxyUser(parser, answer); 
-            break;
-        case CP_CHANGE_PASS:
-            changePassword(parser, answer);
-            break;
-        case CP_LIST_USERS:
-            getSniffedUsersList(parser, answer);
-            break;
-        case CP_GET_METRICS:
-            getMetrics(parser, answer);
-            break;
-        case CP_DISSECTOR_ON:
-            turnOnPassDissectors(parser, answer);
-            break;
-        case CP_DISSECTOR_OFF:
-            turnOffPassDissectors(parser, answer);
-            break;
-        default:
-            break;
+    /* Si ya escribi la respuesta y se la envie al cliente, puedo 
+        pasar a leer el siguiente comando */
+    if(cpc->execAnsWritten && !buffer_can_read(cpc->writeBuffer)){
+        //FIXME: free(cpc->execAnswer); <-- Dice double free
+        cpc->execAnsWritten = false;
+        cpc->interests = OP_READ;
+        selector_set_interest_key(key, cpc->interests);
+        return CP_EXECUTE;
+    }
+
+    /* Si ya escribi la respuesta, no queda nada por hacer 
+        hasta que TCP la haya enviado */
+    if(cpc->execAnsWritten){
+        return CP_EXECUTE;
+    }
+
+    /* Solo generamos la respuesta una vez por cada comando */
+
+    /**     
+     * Respuesta Exitosa
+     *  +--------+-------------+------------+
+     *  | STATUS |  HAS_DATA   |    DATA    |
+     *  +--------+-------------+------------+
+     *  |      1 | <row-count> | <csv-data> |
+     *  +--------+-------------+------------+
+     * 
+     * Respuesta con Error
+     *  +--------+----------+--------------+
+     *  | STATUS | HAS_DATA |     DATA     |
+     *  +--------+----------+--------------+
+     *  |      0 |        1 | <error-code> |
+     *  +--------+----------+--------------+
+     * 
+    **/
+    if(cpc->execAnswer == NULL){
+        // TODO: Cambiar por array de punteros a funcion
+        switch (parser->code){
+            case CP_ADD_USER:
+                addProxyUser(parser, &cpc->execAnswer);
+                break;
+            case CP_REM_USER:
+                removeProxyUser(parser, &cpc->execAnswer); 
+                break;
+            case CP_CHANGE_PASS:
+                changePassword(parser, &cpc->execAnswer);
+                break;
+            case CP_LIST_USERS:
+                getSniffedUsersList(parser, &cpc->execAnswer);
+                break;
+            case CP_GET_METRICS:
+                getMetrics(parser, &cpc->execAnswer);
+                break;
+            case CP_DISSECTOR_ON:
+                turnOnPassDissectors(parser, &cpc->execAnswer);
+                break;
+            case CP_DISSECTOR_OFF:
+                turnOffPassDissectors(parser, &cpc->execAnswer);
+                break;
+            default:
+                break;
+        }
+
+        /* Error en malloc */
+        if(cpc->execAnswer == NULL){
+            printf("[EXECUTE/executeWrite] answer == NULL\n");
+            return CP_ERROR;
+        }
     }
 
     size_t maxWrite;
     uint8_t * writePtr = buffer_write_ptr(cpc->writeBuffer, &maxWrite);
 
-    int ansSize = strlen(answer);
+    /* Espacio insuficiente en el buffer de escritura para la respuesta. 
+        Nos mantenemos en este estado mientras se libera espacio */
+
+    
+    int ansSize = strlen(cpc->execAnswer);
     if(ansSize > maxWrite){
-        //TODO: Buffer lleno. Manejar error
-        return CP_ERROR;
+        return CP_EXECUTE;
     }
 
-    memcpy(writePtr, answer, ansSize);
+    memcpy(writePtr, cpc->execAnswer, ansSize);
     buffer_write_adv(cpc->writeBuffer, ansSize);
 
-    cpc->interests |= OP_READ;
-    selector_set_interest_key(key, cpc->interests);
-
-    free(answer);
+    cpc->execAnsWritten = true;
+    
     initCpCommandParser(parser);
-
     return CP_EXECUTE;
 }
 

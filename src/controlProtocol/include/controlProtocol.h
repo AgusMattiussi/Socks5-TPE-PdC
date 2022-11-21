@@ -80,6 +80,8 @@ typedef struct controlProtConn {
         una respuesta al buffer de salida, pero TCP no la hubiera enviado aun */
     bool helloWritten;
     bool authAnsWritten;
+    bool execAnsWritten;
+    char * execAnswer;
 } controlProtConn;
 
 controlProtConn * newControlProtConn(int fd);

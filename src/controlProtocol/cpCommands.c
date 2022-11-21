@@ -1,20 +1,25 @@
 #include "include/cpCommands.h"
 
-static void noDataStatusSuccessAnswer(char * answer);
-static void statusFailedAnswer(char * answer, controlProtErrorCode errorCode);
-static void switchPassDissectors(cpCommandParser * parser, char * answer, bool value);
+static void noDataStatusSuccessAnswer(char ** answer);
+static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode);
+static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value);
 
-static void noDataStatusSuccessAnswer(char * answer){
-    answer = calloc(3, sizeof(char)); 
-    sprintf(answer, "%c%c\n", STATUS_SUCCESS, 0);
+static void noDataStatusSuccessAnswer(char ** answer){
+    *answer = calloc(3, sizeof(char));
+    if(*answer == NULL){
+        printf("Aca ya falla\n");
+        return; }
+    sprintf(*answer, "%c%c\n", STATUS_SUCCESS, 0);
 }
 
-static void statusFailedAnswer(char * answer, controlProtErrorCode errorCode){
-    answer = calloc(4, sizeof(char)); 
-    sprintf(answer, "%c%c%c\n", STATUS_ERROR, 1, errorCode);
+static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode){
+    *answer = calloc(4, sizeof(char)); 
+    if(*answer == NULL)
+        return;
+    sprintf(*answer, "%c%c%c\n", STATUS_ERROR, 1, errorCode);
 }
 
-void addProxyUser(cpCommandParser * parser, char * answer){
+void addProxyUser(cpCommandParser * parser, char ** answer){
     char * user, * password;
 
     if(parser->hasData == 0) {
@@ -54,7 +59,7 @@ void addProxyUser(cpCommandParser * parser, char * answer){
     return;
 }
 
-void removeProxyUser(cpCommandParser * parser, char * answer){
+void removeProxyUser(cpCommandParser * parser, char ** answer){
     // char * user;
 
     if(parser->hasData == 0){
@@ -79,7 +84,7 @@ void removeProxyUser(cpCommandParser * parser, char * answer){
     return;    
 }
 
-void changePassword(cpCommandParser * parser, char * answer){
+void changePassword(cpCommandParser * parser, char ** answer){
     char * user, * newPass;
 
     if(parser->hasData == 0){
@@ -103,8 +108,10 @@ void changePassword(cpCommandParser * parser, char * answer){
     return;
 }
 
-static void switchPassDissectors(cpCommandParser * parser, char * answer, bool value){
+static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value){
+    printf("Switch Pass dissectors: %s\n", value? "true" : "false");
     if(parser->hasData == 1){
+        printf("Es sin data amigazo\n");
         statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
         return;
     }
@@ -112,50 +119,60 @@ static void switchPassDissectors(cpCommandParser * parser, char * answer, bool v
     set_sniffer_state(value);   
 
     noDataStatusSuccessAnswer(answer);
+    if(*answer == NULL){
+        printf("AAAAA POR QUE ES NULL????\n");
+    }
+
+    printf("Saliendo de switchPassDissectors\n");
     return;
 }
 
-void turnOnPassDissectors(cpCommandParser * parser, char * answer){
+void turnOnPassDissectors(cpCommandParser * parser, char ** answer){
     switchPassDissectors(parser, answer, true);
 }
 
-void turnOffPassDissectors(cpCommandParser * parser, char * answer){
+void turnOffPassDissectors(cpCommandParser * parser, char ** answer){
     switchPassDissectors(parser, answer, false);
 }
 
-void getSniffedUsersList(cpCommandParser * parser, char * answer){
+void getSniffedUsersList(cpCommandParser * parser, char ** answer){
     if(parser->hasData == 1){
         statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
         return;
     }
 
-    answer = calloc(3, 1 /* x Tamanio Usuario+Password */);
+    *answer = calloc(3, 1 /* x Tamanio Usuario+Password */);
+    if(*answer == NULL)
+        return;
 
     /* TODO: Cargar en answer los usuarios y sus contrasenias 
        uno por uno, en formato CSV */
 
-   answer[0] = STATUS_SUCCESS;
-   answer[1] = 1;   // HAS_DATA = 1
+   *answer[0] = STATUS_SUCCESS;
+   *answer[1] = 1;   // HAS_DATA = 1
    return;
 }
 
-void getMetrics(cpCommandParser * parser, char * answer){
+void getMetrics(cpCommandParser * parser, char ** answer){
     if(parser->hasData == 1){
         statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
         return;
     }
 
     int titleLen = strlen(METRICS_CSV_TITLE);
-    answer = calloc(2*titleLen, sizeof(char));
-    sprintf(answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 2,
+    *answer = calloc(2*titleLen, sizeof(char));
+    if(*answer == NULL)
+        return;
+
+    sprintf(*answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 2,
         METRICS_CSV_TITLE, get_current_socks(), get_historic_socks(), 
         get_current_mgmt(), get_historic_mgmt(), get_current_total(),
         get_historic_total(), get_bytes_transferred()
     );
 
-    //TODO: Sacar el \0
+    //TODO: Sacar el '\0'
 
-   printf("%s", answer);
+   printf("%s", *answer);
    return;
 }
 
