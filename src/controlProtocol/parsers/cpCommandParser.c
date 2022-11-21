@@ -21,7 +21,7 @@ cpCommandParserState cpcpParseByte(cpCommandParser * parser, uint8_t byte){
             LogInfo("[CPAP_HAS_DATA] - %hhx (%c)\n", byte, byte); //TODO: Cambiar char
             if(byte == 0x0/* '0' */)
                 return CPCP_DONE;   // Por default, hasData = 0
-            if(byte == 0x1/* '1' */){
+            if(byte ==  0x1 /*'1'*/){
                 parser->hasData = 1;
                 return CPCP_READ_DATA;
             }

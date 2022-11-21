@@ -34,6 +34,10 @@ void remove_current_socks_connection(){
     metrics->current_socks_connections--;
 }
 
+void remove_current_mgmt_connection(){
+    metrics->current_mgmt_connections--;
+}
+
 void add_bytes_transferred(long bytes){
     metrics->bytes_transferred += bytes;
 }
