@@ -1,5 +1,5 @@
 CC=gcc
-CCFLAGS_FINAL=-g -Wall -Wextra -Wno-unused-parameter -Wno-unused-parameter -Wno-implicit-fallthrough -pedantic -pedantic-errors -std=c11 -D_POSIX_C_SOURCE=200112L -pthread
+CCFLAGS_FINAL=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -pedantic -pedantic-errors -std=c11 -D_POSIX_C_SOURCE=200112L -pthread
 # -fsanitize=address
 CCFLAGS=-Wall -g -pthread
 AS= -fsanitize=address
