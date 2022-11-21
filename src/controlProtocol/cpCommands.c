@@ -152,8 +152,10 @@ char * getSniffedUsersList(cpCommandParser * parser){
 
     /* Obtenemos la lista de usuario sniffeados */
     users_list * userList = get_sniffed_users();
-    if(userList == NULL)
+    if(userList == NULL){
+        printf("watafai es null??\n");
         return NULL;
+    }
     
     printf("xd2\n");
     int reallocCount = 0;

@@ -112,6 +112,7 @@ void freeControlProtConn(controlProtConn * cpc, fd_selector s){
     selector_unregister_fd(s, cpc->fd, false);
     close(cpc->fd);
     free(cpc);
+    remove_current_mgmt_connection();
     //TODO: Descontar de las conexiones actuales en metrics
 }
 
