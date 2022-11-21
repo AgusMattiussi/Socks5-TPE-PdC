@@ -151,7 +151,7 @@ int admin_auth(int fd, char * buf) {
     return 0;
 }
 
-char add_user(char *username, char * pass, int fd) {
+char add_user_mgmt(char *username, char * pass, int fd) {
     /*user * new_user = malloc(sizeof(struct user));
     new_user->username = username;
     new_user->password = pass;*/

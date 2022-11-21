@@ -51,3 +51,11 @@ El servidor notifica mediante salida estándar cuando detecta una conexión entr
 - Dirección a la que se quiere conectar
 - Puerto al que se quiere conectar
 - Estado de conexión (descripto por el *status code* de *SOCKSv5*)
+
+## Integrantes:
+Nombre | Legajo
+-------|--------
+[De Simone, Franco](https://github.com/desimonef) | 61100
+[Dizenhaus, Manuel](https://github.com/ManuelDizen) | 61101
+[Mattiussi, Agustín Hernán](https://github.com/AgusMattiussi) | 61361
+[Sasso, Julián Martín](https://github.com/JulianSasso) | 61535

@@ -32,7 +32,7 @@
 
 void help() ;
 int admin_auth(int fd, char * buf);
-char add_user(char *username, char * pass, int fd);
+char add_user_mgmt(char *username, char * pass, int fd);
 char delete_user(char * username, int fd);
 char edit_password(char * pass, int fd);
 char list_users(int fd);

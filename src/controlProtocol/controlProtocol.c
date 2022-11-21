@@ -1,4 +1,5 @@
 #include "include/controlProtocol.h"
+#include "../logger/logger.h"
 
 static void initStm(struct state_machine * stm);
 static controlProtStmState helloWrite(struct selector_key * key);

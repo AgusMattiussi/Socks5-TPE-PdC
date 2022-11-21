@@ -109,7 +109,7 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = add_user(arg, arg2, fd);
+            ret = add_user_mgmt(arg, arg2, fd);
             break;
         case 3:
             aux = strtok(NULL, " ");
