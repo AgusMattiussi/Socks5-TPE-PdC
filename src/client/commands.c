@@ -107,7 +107,7 @@ char receive_simple_response(int fd) {
     if(n_received < 0)
         return '0';
 
-    printf("buf: %s\n", response_buf);
+    //printf("buf: %s\n", response_buf);
 
     if((char)response_buf[0] == FAILURE) {
         if(response_buf[1] != HAS_DATA)
@@ -119,14 +119,14 @@ char receive_simple_response(int fd) {
 }
 
 void help() {
-    printf("\nGracias por pedir ayuda! Los comandos son los siguientes:\n");
-    printf("adduser <usuario> <pass>: añadir usuario al servidor\n");
-    printf("deleteuser <usuario>: eliminar usuario del servidor\n");
-    printf("editpass <newpass>: editar contraseña\n");
-    printf("list: listar usuarios del servidor\n");
-    printf("metrics: obtener métricas de uso del servidor\n");
-    printf("dis: prender password dissector\n");
-    printf("disoff: apagar password dissector\n");
+    printf("\n¡Bienvenido a SCALO_NET! Los comandos disponibles son los siguientes:\n\n");
+    printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
+    printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
+    printf("editpass <newpass>: editar contraseña\n\n");
+    printf("list: listar usuarios del servidor\n\n");
+    printf("metrics: obtener métricas de uso del servidor\n\n");
+    printf("dis: prender password dissector\n\n");
+    printf("disoff: apagar password dissector\n\n");
 }
 
 int admin_auth(int fd, char * buf) {

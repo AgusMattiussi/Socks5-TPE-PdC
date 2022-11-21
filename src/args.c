@@ -48,7 +48,7 @@ version(void) {
 }
 
 static void
-usage(const char *progname) {
+usage(const char * progname) {
     fprintf(stderr,
         "Usage: %s [OPTION]...\n"
         "\n"
@@ -62,13 +62,6 @@ usage(const char *progname) {
         "   -m               Activa la opción de debugger.\n"
         "   -n               Desactiva la opción de debugger.\n"
         
-        "\n"
-        "   --doh-ip    <ip>    \n"
-        "   --doh-port  <port>  XXX\n"
-        "   --doh-host  <host>  XXX\n"
-        "   --doh-path  <host>  XXX\n"
-        "   --doh-query <host>  XXX\n"
-
         "\n",
         progname);
     exit(1);
@@ -92,7 +85,7 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
             break;
         switch (c) {
             case 'h':
-                usage(argv[0]);
+                usage("socks5d");
                     goto finally;
             case 'l':
                 args->socks_addr = optarg;

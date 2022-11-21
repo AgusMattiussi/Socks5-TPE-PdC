@@ -114,13 +114,15 @@ conn_information(socks_conn_model * connection){
 				buff, 
 				parser->type == IPv4 ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN);
 	}
+	char * ipAddress = getIpAddress(&(connection->cli_conn->addr));
 	printf("%s\t%s\t%s\t%s\t%d\t%s\t%d\t%d\t\n", 
 			time_buff, username, reg_type, 
-			getIpAddress(&(connection->cli_conn->addr)),
+			ipAddress,
 			getPort(&(connection->cli_conn->addr)), 
 			parser->type==FQDN?(char*)parser->addr.fqdn:buff,
 			parser->port, parser->res_parser.state);
 	fflush(stdout);
+	free(ipAddress);
 }
 
 void
@@ -149,13 +151,14 @@ pass_information(socks_conn_model * connection){
 				buff, 
 				parser->type == IPv4 ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN);
 	}
-
+	char * ipAddress = getIpAddress(&(connection->cli_conn->addr));
 	printf("POP3 sniffing: %s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\t\nUser: %s\nPassword: %s\n", 
 			time_buff, username, reg_type, 
 			protocol,
-			getIpAddress(&(connection->cli_conn->addr)),
+			ipAddress,
 			getPort(&(connection->cli_conn->addr)), 
 			parser->type==FQDN?(char*)parser->addr.fqdn:buff,
 			parser->port, pop3_parser->user, pop3_parser->pass
 			);
+	free(ipAddress);
 }
