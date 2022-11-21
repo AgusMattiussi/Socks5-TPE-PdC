@@ -9,7 +9,6 @@
 #include "proto.h"
 #include "commands.h"
 #include <string.h>
-#include "../logger/logger.h"
 
 static char * version;
 char * commandStr[] = {
@@ -22,6 +21,17 @@ char * commandStr[] = {
         "dis",
         "disoff"
 };
+
+typedef enum controlProtErrorCode{
+    CPERROR_INVALID_PASSWORD = '0',
+    CPERROR_COMMAND_NEEDS_DATA,
+    CPERROR_NO_DATA_COMMAND,
+    CPERROR_INVALID_FORMAT,
+    CPERROR_INEXISTING_USER,
+    CPERROR_ALREADY_EXISTS,
+    CPERROR_USER_LIMIT,
+    CPERROR_GENERAL_ERROR     /* Encapsulamiento de los errores de memoria */
+} controlProtErrorCode;
 
 int mng_connect(char * addr, char * port);
 void client_parse_args(int argc, char ** argv, struct proto * args);
@@ -45,7 +55,7 @@ int main(int argc, char ** argv) {
     int c = mng_connect(addr, port);
 
     if(c < 0)
-        return -1;
+        printf("Connection failed\n");
 
     return 0;
 	
@@ -69,6 +79,36 @@ void client_parse_args(int argc, char ** argv, struct proto * args) {
         }
     }
 
+}
+
+int analyze_return(char ret) {
+    switch (ret)
+    {
+    case 'x':
+        printf("Unexpected server error. Closing...\n");
+        return 1;
+        break;
+    case 'i':
+        break;
+    case CPERROR_ALREADY_EXISTS:
+        printf("Error: user already exists\n");
+    case CPERROR_COMMAND_NEEDS_DATA:
+        printf("Error: command needs data\n");
+    case CPERROR_GENERAL_ERROR:
+        printf("Unexpected server error. Closing...\n");
+        return 1;
+    case CPERROR_INEXISTING_USER:
+        printf("Error: user does not exist\n");
+    case CPERROR_INVALID_FORMAT:
+        printf("Error: invalid format\n");
+    case CPERROR_NO_DATA_COMMAND:
+        printf("Error: command doesn't allow data\n");
+    case CPERROR_USER_LIMIT:
+        printf("Error: user limit reached\n");
+    default:
+        break;
+    }
+    return 0;
 }
 
 int new_command(int fd, char * buf) {
@@ -109,7 +149,7 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = add_user_mgmt(arg, arg2, fd);
+            ret = double_arg_command(COMMAND_ADD_USER, arg, arg2, fd);
             break;
         case 3:
             aux = strtok(NULL, " ");
@@ -119,7 +159,7 @@ int new_command(int fd, char * buf) {
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = delete_user(arg, fd);
+            ret = single_arg_command(COMMAND_DELETE_USER, arg, fd);
             break;
         case 4:
             aux = strtok(NULL, " ");
@@ -127,54 +167,47 @@ int new_command(int fd, char * buf) {
                 goto error;
             strcpy(arg, aux);
             aux = strtok(NULL, " ");
+            if(aux == NULL)
+                goto error;
+            strcpy(arg2, aux);
+            aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = edit_password(arg, fd);
+            ret = double_arg_command(COMMAND_EDIT_PASSWORD, arg, arg2, fd);
             break;
         case 5:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            list_users(fd);
+            ret = list_users(fd);
             break;
         case 6:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            obtain_metrics(fd);
+            ret = obtain_metrics(fd);
             break;
         case 7:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = dissector_on(fd);
+            ret = dissector(1, fd);
             break;
         case 8:
             aux = strtok(NULL, " ");
             if(aux != NULL)
                 goto error;
-            ret = dissector_off(fd);
+            ret = dissector(0, fd);
             break;
         default:
             goto error;
         }
 
-    switch (ret)
-    {
-    case '0':
-        printf("Error inesperado del servidor. Cerrando...\n");
-        return 1;
-        break;
-    case '1':
-        printf("Success!\n");
-        break;
-    default:
-        break;
-    }
-    return 0;
+
+    return analyze_return(ret);
 
     error:
-        printf("por favor, ingrese un comando válido\n");
+        printf("Please, enter a valid command\n");
             return 0;
 }
 
@@ -225,19 +258,19 @@ int mng_connect(char * addr, char * port) {
 
     int auth = 0;
 
-    printf("Ingrese su contraseña: ");
+    printf("Password: ");
 
     for(int i=0; i<3 && !auth; i++) {
         auth = admin_auth(proxy_socket, buf);
     }
 
     if(!auth) {
-        printf("\nCantidad de intentos excedida. Cerrando conexión...\n");
+        printf("\nToo many failed attempts. Closing...\n");
         return -1;
     }
 
     
-    printf("\n¡Bienvenido a SCALO_NET! Ingrese help para más opciones\n");
+    printf("\nWelcome! Use \"help\" for more options\n");
     
 
     while(!done) {

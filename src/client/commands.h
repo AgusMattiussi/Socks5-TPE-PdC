@@ -32,13 +32,12 @@
 
 void help() ;
 int admin_auth(int fd, char * buf);
-char add_user_mgmt(char *username, char * pass, int fd);
-char delete_user(char * username, int fd);
-char edit_password(char * pass, int fd);
+char single_arg_command(int command, char * username, int fd);
+char double_arg_command(int command, char * username, char * pass, int fd);
 char list_users(int fd);
 char obtain_metrics(int fd);
-char dissector_on(int fd);
-char dissector_off(int fd);
+char dissector(int on, int fd);
+
 
 #endif
 
