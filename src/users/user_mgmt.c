@@ -41,7 +41,7 @@ get_total_curr_users(){
     return total_users;
 }
 
-uint8_t 
+int 
 process_authentication_request(char * username, char * password){
     if(!require_auth) return 0; // Que necesidad de chequear si igual no necesita auth.
     for(int i = 0; i < total_users; i++){
@@ -52,7 +52,7 @@ process_authentication_request(char * username, char * password){
     return -1;
 }
 
-uint8_t
+int
 user_exists(char * username, char * password){
     if(username == NULL || password == NULL){
         LogError("Username or password are invalid.");
@@ -119,7 +119,7 @@ add_user(user_t * user){
     return ADD_OK;
 }
 
-uint8_t 
+int 
 remove_user(char * username){
     printf("Estoy entrando a add_user con parametro %s\n", username);
 
@@ -135,7 +135,7 @@ remove_user(char * username){
     return 0;
 }
 
-uint8_t 
+int 
 change_password(char * username, char * new_password){
     printf("Estoy entrando a change_pass con parametros %s\t%s\n", username, new_password);
 

@@ -12,8 +12,6 @@
 
 #include "buffer.h"
 #include "netutils.h"
-#include "parser_utils.h"
-#include "parser.h"
 #include "selector.h"
 #include "stm.h"
 #include "../socks5/socks5.h"

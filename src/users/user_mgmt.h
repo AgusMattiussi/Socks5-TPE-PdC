@@ -15,14 +15,16 @@ enum add_user_state{
     ADD_ERROR
 };
 
-uint8_t process_authentication_request(char * username, char * password);
+int process_authentication_request(char * username, char * password);
 char * get_curr_user();
 void set_curr_user(char * username);
 uint8_t get_total_curr_users();
 void free_curr_user();
 enum add_user_state add_user(user_t * user);
 bool needs_auth();
-uint8_t remove_user(char * username);
-uint8_t change_password(char * username, char * new_password);
+int remove_user(char * username);
+int change_password(char * username, char * new_password);
+int
+user_exists(char * username, char * password);
 
 #endif

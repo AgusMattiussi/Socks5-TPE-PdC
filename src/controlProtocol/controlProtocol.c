@@ -3,10 +3,8 @@
 
 static void initStm(struct state_machine * stm);
 static controlProtStmState helloWrite(struct selector_key * key);
-static void onArrival(controlProtStmState state, struct selector_key *key);
 static controlProtStmState authRead(struct selector_key * key);
 static controlProtStmState authWrite(struct selector_key * key);
-static void onDeparture(controlProtStmState state, struct selector_key *key);
 static bool validatePassword(cpAuthParser * authParser);
 static unsigned cpError(struct selector_key * key);
 static controlProtStmState executeRead(struct selector_key * key);
@@ -207,8 +205,8 @@ static controlProtStmState helloWrite(struct selector_key * key){
             | '1'    |        1 | <version> |
             +--------+----------+-----------+
         */
-        int verLen = strlen(CONTROL_PROT_VERSION);
-        int totalLen = verLen + 4; // STATUS = 1  | HAS_DATA = 1 | DATA\n
+        size_t verLen = strlen(CONTROL_PROT_VERSION);
+        size_t totalLen = verLen + 4; // STATUS = 1  | HAS_DATA = 1 | DATA\n
         
         char * helloMsg = calloc(totalLen, sizeof(char));
         sprintf(helloMsg, "%c%c%s\n", STATUS_SUCCESS, 1, CONTROL_PROT_VERSION);
@@ -249,7 +247,7 @@ static controlProtStmState authRead(struct selector_key * key){
     /* Voy a leer byte a byte, no necesito el puntero */
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
 
-    for (int i = 0; i < bytesLeft && parser->currentState != CPAP_DONE; i++){
+    for (size_t i = 0; i < bytesLeft && parser->currentState != CPAP_DONE; i++){
         parser->currentState = cpapParseByte(parser, buffer_read(cpc->readBuffer));
 
         if(parser->currentState == CPAP_ERROR){
@@ -274,7 +272,7 @@ static controlProtStmState authWrite(struct selector_key * key){
     LogError("[AUTH] authWrite\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
     char authResult[4];
-    int arSize = 0;
+    size_t arSize = 0;
 
     /* Si ya escribi la respuesta y se la envie al cliente, puedo 
         pasar al siguiente estado */
@@ -363,7 +361,7 @@ static controlProtStmState executeRead(struct selector_key * key){
     /* Voy a leer byte a byte, no necesito el puntero */
     buffer_read_ptr(cpc->readBuffer, &bytesLeft);
     
-    for(int i = 0; i < bytesLeft && parser->currentState != CPCP_DONE; i++){
+    for(size_t i = 0; i < bytesLeft && parser->currentState != CPCP_DONE; i++){
         parser->currentState = cpcpParseByte(parser, buffer_read(cpc->readBuffer));
         
         if(parser->currentState == CPCP_ERROR){
@@ -468,7 +466,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
         Nos mantenemos en este estado mientras se libera espacio */
 
     
-    int ansSize = strlen(cpc->execAnswer);
+    size_t ansSize = strlen(cpc->execAnswer);
     if(ansSize > maxWrite){
         return CP_EXECUTE;
     }

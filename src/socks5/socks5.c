@@ -186,12 +186,12 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
     size_t length = addr_type == IPv4? IPv4_BYTES:
                     (addr_type == IPv6)? IPv6_BYTES:
                     (addr_type == FQDN)? strlen((char *)parser->addr.fqdn):
-                    -1;
+                    0;
     addr_ptr = addr_type == IPv4? (uint8_t *)&(parser->addr.ipv4.sin_addr):
                     (addr_type == IPv6)? parser->addr.ipv6.sin6_addr.s6_addr:
                     (addr_type == FQDN)? parser->addr.fqdn:
                     NULL;
-    if(length == -1 || addr_ptr == NULL){
+    if(length == 0 || addr_ptr == NULL){
         LogError("Error detecting address type.");
         return -1;
     }
@@ -221,7 +221,7 @@ req_response_message(buffer * write_buff, struct res_parser * parser){
 }
 
 static void
-set_res_parser(struct req_parser * parser, enum socks_state socks_state){
+set_res_parser(struct req_parser * parser, /* enum socks_state */ unsigned socks_state){
     parser->res_parser.state = socks_state;
     parser->res_parser.type = parser->type;
     parser->res_parser.port = parser->port;
@@ -229,7 +229,7 @@ set_res_parser(struct req_parser * parser, enum socks_state socks_state){
 }
 
 static enum socks_state 
-manage_req_error(struct req_parser * parser, enum socks_state socks_state,
+manage_req_error(struct req_parser * parser, /* enum socks_state */ unsigned socks_state,
                 socks_conn_model * conn, struct selector_key * key) {
     set_res_parser(parser, socks_state);
     selector_status selector_ret = selector_set_interest(key->s, conn->cli_conn->socket, OP_WRITE);

@@ -50,7 +50,7 @@ char * addProxyUser(cpCommandParser * parser){
         .name = user,
         .pass = password
     }; 
-    printf("user: %s(%d), pass: %s(%d)", user, strlen(user), password, strlen(password));
+    printf("user: %s(%ld), pass: %s(%ld)", user, strlen(user), password, strlen(password));
 
     uint8_t result = add_user(&new);
 
