@@ -1,4 +1,7 @@
 #include "include/cpCommands.h"
+#include "../include/args.h"
+#include "../logger/logger.h"
+
 
 static void noDataStatusSuccessAnswer(char ** answer);
 static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode);
@@ -7,7 +10,7 @@ static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool 
 static void noDataStatusSuccessAnswer(char ** answer){
     *answer = calloc(3, sizeof(char));
     if(*answer == NULL){
-        printf("Aca ya falla\n");
+        LogError("calloc fail\n");
         return; }
     sprintf(*answer, "%c%c\n", STATUS_SUCCESS, 0);
 }
@@ -39,6 +42,7 @@ void addProxyUser(cpCommandParser * parser, char ** answer){
         .name = user,
         .pass = password
     }; 
+    printf("user: %s(%d), pass: %s(%d)", user, strlen(user), password, strlen(password));
 
     uint8_t result = add_user(&new);
 
@@ -72,7 +76,7 @@ void removeProxyUser(cpCommandParser * parser, char ** answer){
 
     /* user = malloc(parser->dataSize);
     memcpy(user, parser->data, parser->dataSize); */
-
+    printf("Remove user: %s\n", parser->data);
     if(remove_user(parser->data) < 0) {
         statusFailedAnswer(answer, CPERROR_INEXISTING_USER);
     } else {
@@ -99,7 +103,7 @@ void changePassword(cpCommandParser * parser, char ** answer){
         statusFailedAnswer(answer, CPERROR_INVALID_FORMAT);
         return;
     }
-
+    printf("Newpass: %s\n", newPass);
     if(change_password(user, newPass) < 0) {
         statusFailedAnswer(answer, CPERROR_INEXISTING_USER);
     } else {
@@ -111,7 +115,7 @@ void changePassword(cpCommandParser * parser, char ** answer){
 static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value){
     printf("Switch Pass dissectors: %s\n", value? "true" : "false");
     if(parser->hasData == 1){
-        printf("Es sin data amigazo\n");
+        LogError("Es sin data amigazo\n");
         statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
         return;
     }
@@ -120,7 +124,7 @@ static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool 
 
     noDataStatusSuccessAnswer(answer);
     if(*answer == NULL){
-        printf("AAAAA POR QUE ES NULL????\n");
+        LogError("Answer is null\n");
     }
 
     printf("Saliendo de switchPassDissectors\n");

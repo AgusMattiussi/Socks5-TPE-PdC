@@ -83,6 +83,7 @@ user_exists_by_username(char * username){
 
 enum add_user_state 
 add_user(user_t * user){
+    printf("Estoy entrando a add_user con parametros %s\t%s\n", user->name, user->pass);
     if(total_users == MAX_USERS){
         LogError("Alcanzaste un máximo de usuarios.\n");
         free(user);
@@ -114,11 +115,14 @@ add_user(user_t * user){
 
     total_users++;
     require_auth = true;
+    printf("Lo agregue\n");
     return ADD_OK;
 }
 
 uint8_t 
 remove_user(char * username){
+    printf("Estoy entrando a add_user con parametro %s\n", username);
+
     int pos = user_exists_by_username(username);
     if(pos == -1){LogError("User does not exist."); return -1;}
     struct user_t * to_delete = users[pos];
@@ -127,21 +131,26 @@ remove_user(char * username){
     free(to_delete->pass);
     free(to_delete);
     total_users--;
+    printf("LO borre\n");
     return 0;
 }
 
 uint8_t 
 change_password(char * username, char * new_password){
+    printf("Estoy entrando a change_pass con parametros %s\t%s\n", username, new_password);
+
     int pos = user_exists_by_username(username);
     if(pos == -1){LogError("User does not exist."); return -1;}
     free(users[pos]->pass);
     users[pos]->pass = malloc(strlen(new_password + 1));
     strcpy(users[pos]->pass, new_password);
+    printf("Lo cambie\n");
     return 0;
 }
 
 user_t **
 get_all_users(){
+    printf("Entro a get all users");
     return users;
 }
 

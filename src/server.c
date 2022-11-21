@@ -64,7 +64,7 @@ close_socks_conn(socks_conn_model * socks) {
 
 
 static void dummyBlock(struct selector_key * key){
-    printf("\n DUMMY BLOCK\n");
+    LogInfo("\n DUMMY BLOCK\n");
 }
 
 const fd_handler cpFdHandler = {
@@ -76,19 +76,19 @@ const fd_handler cpFdHandler = {
 
 
 static void passive_cp_socket_handler(struct selector_key * key) {
-    printf(" En passive_cp_socket_handler\n");
+    LogInfo(" En passive_cp_socket_handler\n");
     controlProtConn * new;
     
     /* Aceptamos la conexion entrante */
     int clientFd = accept(key->fd, NULL, NULL);
     if(clientFd < 0){
-        printf(" ERROR en passive_cp_socket_handler (accept)\n");
+        LogError(" ERROR en passive_cp_socket_handler (accept)\n");
         return;
     }
 
     /* Hacemos el socket no bloqueante */
     if(selector_fd_set_nio(clientFd) == -1){
-        printf(" ERROR en passive_cp_socket_handler (selector_fd_set_nio)\n");
+        LogError(" ERROR en passive_cp_socket_handler (selector_fd_set_nio)\n");
         close(clientFd);
         return;
     }
@@ -97,18 +97,18 @@ static void passive_cp_socket_handler(struct selector_key * key) {
     // TODO: Considerar aniadirlo a una lista para liberar todo al?
     new = newControlProtConn(clientFd);
     if(new == NULL){
-        printf(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
+        LogError(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
         close(clientFd);
         return;
     }
 
     if(selector_register(key->s, new->fd, /*TODO: Completar handlers*/ &cpFdHandler, new->interests, new) != 0){
-        printf(" ERROR en passive_cp_socket_handler (selector_register)\n");
+        LogError(" ERROR en passive_cp_socket_handler (selector_register)\n");
         freeControlProtConn(new, key->s); // Esto incluye el cerrado de clientFd
         return;
     }
     add_mgmt_connection(); // Metrics
-    printf(" Socket pasivo creado exitosamente \n");
+    LogInfo(" Socket pasivo creado exitosamente \n");
 }
 
 static void 
@@ -239,12 +239,12 @@ void start_server(char * socks_addr, char * socks_port, char * mng_addr, char * 
     }
     fd_mng_ipv4 = start_socket(mng_addr, mng_port, &passive_socket_fd_mng_handler, AF_UNSPEC);
     if(fd_mng_ipv4 == -1){ 
-        printf("Falle en start_socket ipv4, linea 150 de start_server\n");
+        LogError("Falle en start_socket ipv4, linea 150 de start_server\n");
         goto finally; }
     else if(mng_addr == NULL){
         fd_mng_ipv6 = start_socket(NULL, mng_port, &passive_socket_fd_mng_handler, AF_INET6);
         if(fd_mng_ipv6 == -1){
-            printf("Falle en start socket ipv6, linea 155 de start_server\n");
+            LogError("Falle en start socket ipv6, linea 155 de start_server\n");
             goto finally; 
         }
     }

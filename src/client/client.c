@@ -9,6 +9,7 @@
 #include "proto.h"
 #include "commands.h"
 #include <string.h>
+#include "../logger/logger.h"
 
 static char * version;
 char * commandStr[] = {
@@ -44,7 +45,7 @@ int main(int argc, char ** argv) {
     int c = mng_connect(addr, port);
 
     if(c < 0)
-        printf("abrazo capo\n");
+        return -1;
 
     return 0;
 	
@@ -236,7 +237,7 @@ int mng_connect(char * addr, char * port) {
     }
 
     
-    printf("\nBienvenido al cliente! Ingrese help para más opciones\n");
+    printf("\n¡Bienvenido a SCALO_NET! Ingrese help para más opciones\n");
     
 
     while(!done) {

@@ -7,7 +7,7 @@ char parse_users_message(int fd, char * offset) {
 
     uint8_t response_buf[MAXLEN] = {0};
 
-    printf("entrando... offset = %s\n", offset);
+    //printf("entrando... offset = %s\n", offset);
 
     //FIXME: Estaba sin inicializar
     size_t byte_n = MAXLEN;
@@ -122,7 +122,7 @@ void help() {
     printf("\n¡Bienvenido a SCALO_NET! Los comandos disponibles son los siguientes:\n\n");
     printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
     printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
-    printf("editpass <newpass>: editar contraseña\n\n");
+    printf("editpass <user> <newpass>: editar contraseña\n\n");
     printf("list: listar usuarios del servidor\n\n");
     printf("metrics: obtener métricas de uso del servidor\n\n");
     printf("dis: prender password dissector\n\n");
@@ -147,7 +147,7 @@ int admin_auth(int fd, char * buf) {
 
     if(ret == '1')
         return 1;
-    printf("Contraseña incorrecta. Por favor, intente nuevamente: ");
+    printf("\nContraseña incorrecta. Por favor, intente nuevamente: ");
     return 0;
 }
 

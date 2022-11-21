@@ -20,7 +20,7 @@
 #define CONTROL_PROT_VERSION "0.1"
 #define ADMIN_PASSWORD "pass1234"
 
-#define TOKEN_DELIMITER ";"
+#define TOKEN_DELIMITER ":"
 #define LINE_DELIMITER "\n"
 
 #define ON 1
