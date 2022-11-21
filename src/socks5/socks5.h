@@ -29,15 +29,13 @@
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
 enum socks_state{
-    //HELLO_READ,
-    //HELLO_WRITE,
-    CONN_READ,
-    CONN_WRITE,
+    HELLO_READ,
+    HELLO_WRITE,
     AUTH_READ,
     AUTH_WRITE,
     REQ_READ,
     REQ_WRITE,
-    REQ_RESOLVE,
+    REQ_DNS,
     REQ_CONNECT,
     COPY,
     ERROR,
@@ -63,9 +61,9 @@ struct copy_model_t{
     int fd;
     buffer * read_buff;
     buffer * write_buff;
+    struct copy_model_t * aux;
     fd_interest interests;
-    fd_interest connection_interests;
-    struct copy_model_t * other;
+    fd_interest int_connection;
 };
 
 struct parsers_t{
