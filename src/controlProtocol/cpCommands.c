@@ -2,11 +2,6 @@
 #include "../include/args.h"
 #include "../logger/logger.h"
 
-static void noDataStatusSuccessAnswer(char ** answer);
-static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode);
-static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value);
-
-
 static char * noDataStatusSuccessAnswer();
 static char * statusFailedAnswer(controlProtErrorCode errorCode);
 static char * switchPassDissectors(cpCommandParser * parser, bool value);

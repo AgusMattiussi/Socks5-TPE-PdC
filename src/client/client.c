@@ -126,7 +126,7 @@ int new_command() {
     char arg2[MAXLEN] = {0};
     char * aux;
 
-    int command;
+    int command = -1;
     for(int i=0; i<COMMAND_CANT; i++) {
         if(strcmp(commandStr[i], new_command)==0) {
             command=i+1;
