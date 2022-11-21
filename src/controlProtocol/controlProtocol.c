@@ -218,9 +218,9 @@ static controlProtStmState helloWrite(struct selector_key * key){
             +--------+----------+-----------+
         */
         int verLen = strlen(CONTROL_PROT_VERSION);
-        int totalLen = verLen + 3; // STATUS = 1  | HAS_DATA = 1 | DATA\n
+        int totalLen = verLen + 4; // STATUS = 1  | HAS_DATA = 1 | DATA\n
         
-        char * helloMsg = calloc(verLen + 3, sizeof(char));
+        char * helloMsg = calloc(totalLen, sizeof(char));
         sprintf(helloMsg, "%c%c%s\n", STATUS_SUCCESS, 1, CONTROL_PROT_VERSION);
 
         size_t maxWrite;
@@ -403,10 +403,12 @@ static controlProtStmState executeWrite(struct selector_key * key){
     /* Si ya escribi la respuesta y se la envie al cliente, puedo 
         pasar a leer el siguiente comando */
     if(cpc->execAnsWritten && !buffer_can_read(cpc->writeBuffer)){
-        //FIXME: free(cpc->execAnswer); <-- Dice double free
+        printf("Termino el comando\n");
         cpc->execAnsWritten = false;
         cpc->interests = OP_READ;
         selector_set_interest_key(key, cpc->interests);
+        free(cpc->execAnswer);
+        cpc->execAnswer = NULL;
         return CP_EXECUTE;
     }
 
@@ -438,25 +440,25 @@ static controlProtStmState executeWrite(struct selector_key * key){
         // TODO: Cambiar por array de punteros a funcion
         switch (parser->code){
             case CP_ADD_USER:
-                addProxyUser(parser, &cpc->execAnswer);
+                cpc->execAnswer = addProxyUser(parser);
                 break;
             case CP_REM_USER:
-                removeProxyUser(parser, &cpc->execAnswer); 
+                cpc->execAnswer = removeProxyUser(parser); 
                 break;
             case CP_CHANGE_PASS:
-                changePassword(parser, &cpc->execAnswer);
+                cpc->execAnswer = changePassword(parser);
                 break;
             case CP_LIST_USERS:
-                getSniffedUsersList(parser, &cpc->execAnswer);
+                cpc->execAnswer = getSniffedUsersList(parser);
                 break;
             case CP_GET_METRICS:
-                getMetrics(parser, &cpc->execAnswer);
+                cpc->execAnswer = getMetrics(parser);
                 break;
             case CP_DISSECTOR_ON:
-                turnOnPassDissectors(parser, &cpc->execAnswer);
+                cpc->execAnswer = turnOnPassDissectors(parser);
                 break;
             case CP_DISSECTOR_OFF:
-                turnOffPassDissectors(parser, &cpc->execAnswer);
+                cpc->execAnswer = turnOffPassDissectors(parser);
                 break;
             default:
                 break;
@@ -485,8 +487,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
     buffer_write_adv(cpc->writeBuffer, ansSize);
 
     cpc->execAnsWritten = true;
-    
-    initCpCommandParser(parser);
+    initCpCommandParser(&cpc->commandParser);
     return CP_EXECUTE;
 }
 

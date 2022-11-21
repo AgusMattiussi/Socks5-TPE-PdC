@@ -26,8 +26,8 @@ void free_list(users_list * list) {
 static node * add_rec(node * first, uint8_t * username, uint8_t * password, int * flag) {
     if (first == NULL) {
         node * aux = malloc(sizeof(node));
-        aux->username = username;
-        aux->password = password;
+        aux->username = (char *) username;
+        aux->password = (char *) password;
         aux->next = first;
         *flag = 1;
         return aux;

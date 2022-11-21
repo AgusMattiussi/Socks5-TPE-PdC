@@ -68,8 +68,8 @@ typedef enum pop3_state {
 } pop3_state;
 
 typedef struct node {
-    uint8_t * username;
-    uint8_t * password;
+    char * username;
+    char * password;
     struct node * next;
 } node;
 

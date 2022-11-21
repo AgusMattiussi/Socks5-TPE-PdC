@@ -123,7 +123,7 @@ void help() {
     printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
     printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
     printf("editpass <newpass>: editar contraseña\n\n");
-    printf("list: listar usuarios del servidor\n\n");
+    printf("list: listar usuarios y contraseñas descubiertas\n\n");
     printf("metrics: obtener métricas de uso del servidor\n\n");
     printf("dis: prender password dissector\n\n");
     printf("disoff: apagar password dissector\n\n");

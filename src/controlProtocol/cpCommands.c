@@ -1,38 +1,49 @@
 #include "include/cpCommands.h"
 
-static void noDataStatusSuccessAnswer(char ** answer);
-static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode);
-static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value);
 
-static void noDataStatusSuccessAnswer(char ** answer){
-    *answer = calloc(3, sizeof(char));
-    if(*answer == NULL){
-        printf("Aca ya falla\n");
-        return; }
-    sprintf(*answer, "%c%c\n", STATUS_SUCCESS, 0);
+
+static char * noDataStatusSuccessAnswer();
+static char * statusFailedAnswer(controlProtErrorCode errorCode);
+static char * switchPassDissectors(cpCommandParser * parser, bool value);
+
+static char * noDataStatusSuccessAnswer(){
+    char * ret = calloc(3, sizeof(char));
+    if(ret != NULL){
+        ret[0] = STATUS_SUCCESS;
+        ret[1] = 0;
+        ret[2] = '\n';
+    }
+
+    return ret;
 }
 
-static void statusFailedAnswer(char ** answer, controlProtErrorCode errorCode){
-    *answer = calloc(4, sizeof(char)); 
-    if(*answer == NULL)
-        return;
-    sprintf(*answer, "%c%c%c\n", STATUS_ERROR, 1, errorCode);
+static char * statusFailedAnswer(controlProtErrorCode errorCode){
+    char * ret = calloc(3, sizeof(char)); 
+
+    if(ret != NULL){
+        ret[0] = STATUS_ERROR;
+        ret[1] = 1;
+        ret[2] = (char) errorCode;
+        ret[3] = '\n';
+    }
+    return ret;
 }
 
-void addProxyUser(cpCommandParser * parser, char ** answer){
+char * addProxyUser(cpCommandParser * parser){
     char * user, * password;
+    char * ret;
 
     if(parser->hasData == 0) {
-        statusFailedAnswer(answer, CPERROR_COMMAND_NEEDS_DATA);
-        return;
+        ret = statusFailedAnswer(CPERROR_COMMAND_NEEDS_DATA);
+        return ret;
     }
 
     user = strtok(parser->data, TOKEN_DELIMITER);
     password = strtok(NULL, LINE_DELIMITER);
 
     if(user == NULL || password == NULL){
-        statusFailedAnswer(answer, CPERROR_INVALID_FORMAT);
-        return;
+        ret = statusFailedAnswer(CPERROR_INVALID_FORMAT);
+        return ret;
     }
 
     user_t new = {
@@ -44,27 +55,28 @@ void addProxyUser(cpCommandParser * parser, char ** answer){
 
     switch(result){
         case ADD_MAX_USERS:
-            statusFailedAnswer(answer, CPERROR_USER_LIMIT);
+            ret = statusFailedAnswer(CPERROR_USER_LIMIT);
             break;
         case ADD_USER_EXISTS:
-            statusFailedAnswer(answer, CPERROR_ALREADY_EXISTS);
+            ret = statusFailedAnswer(CPERROR_ALREADY_EXISTS);
             break;
         case ADD_OK:
-            noDataStatusSuccessAnswer(answer);
+            ret = noDataStatusSuccessAnswer();
             break;
         default:
-            statusFailedAnswer(answer, CPERROR_GENERAL_ERROR);
+            ret = statusFailedAnswer(CPERROR_GENERAL_ERROR);
     }
 
-    return;
+    return ret;
 }
 
-void removeProxyUser(cpCommandParser * parser, char ** answer){
+char * removeProxyUser(cpCommandParser * parser){
     // char * user;
+    char * ret;
 
     if(parser->hasData == 0){
-        statusFailedAnswer(answer, CPERROR_COMMAND_NEEDS_DATA);
-        return;
+        ret = statusFailedAnswer(CPERROR_COMMAND_NEEDS_DATA);
+        return ret;
     }
 
     // Cambiamos el '\n' por '\0'
@@ -74,106 +86,138 @@ void removeProxyUser(cpCommandParser * parser, char ** answer){
     memcpy(user, parser->data, parser->dataSize); */
 
     if(remove_user(parser->data) < 0) {
-        statusFailedAnswer(answer, CPERROR_INEXISTING_USER);
+        ret = statusFailedAnswer(CPERROR_INEXISTING_USER);
     } else {
-        noDataStatusSuccessAnswer(answer);
+        ret = noDataStatusSuccessAnswer();
     }
 
-    // free(user);
-    noDataStatusSuccessAnswer(answer);
-    return;    
+    return ret;    
 }
 
-void changePassword(cpCommandParser * parser, char ** answer){
+char * changePassword(cpCommandParser * parser){
     char * user, * newPass;
+    char * ret;
 
     if(parser->hasData == 0){
-        statusFailedAnswer(answer, CPERROR_COMMAND_NEEDS_DATA);
-        return;
+        ret = statusFailedAnswer(CPERROR_COMMAND_NEEDS_DATA);
+        return ret;
     }
 
     user = strtok(parser->data, TOKEN_DELIMITER);
     newPass = strtok(NULL, LINE_DELIMITER);
 
     if(user == NULL || newPass == NULL){
-        statusFailedAnswer(answer, CPERROR_INVALID_FORMAT);
-        return;
+        ret = statusFailedAnswer(CPERROR_INVALID_FORMAT);
+        return ret;
     }
 
     if(change_password(user, newPass) < 0) {
-        statusFailedAnswer(answer, CPERROR_INEXISTING_USER);
+        ret = statusFailedAnswer(CPERROR_INEXISTING_USER);
     } else {
-        noDataStatusSuccessAnswer(answer);
+        ret = noDataStatusSuccessAnswer();
     }
-    return;
+    return ret;
 }
 
-static void switchPassDissectors(cpCommandParser * parser, char ** answer, bool value){
-    printf("Switch Pass dissectors: %s\n", value? "true" : "false");
+static char * switchPassDissectors(cpCommandParser * parser, bool value){
+    char * ret;
     if(parser->hasData == 1){
-        printf("Es sin data amigazo\n");
-        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
-        return;
+        ret = statusFailedAnswer(CPERROR_NO_DATA_COMMAND);
+        return ret;
     }
 
-    set_sniffer_state(value);   
+    set_sniffer_state(value);
 
-    noDataStatusSuccessAnswer(answer);
-    if(*answer == NULL){
-        printf("AAAAA POR QUE ES NULL????\n");
-    }
-
-    printf("Saliendo de switchPassDissectors\n");
-    return;
+    ret = noDataStatusSuccessAnswer();
+    return ret;
 }
 
-void turnOnPassDissectors(cpCommandParser * parser, char ** answer){
-    switchPassDissectors(parser, answer, true);
+char * turnOnPassDissectors(cpCommandParser * parser){
+    return switchPassDissectors(parser, true);
 }
 
-void turnOffPassDissectors(cpCommandParser * parser, char ** answer){
-    switchPassDissectors(parser, answer, false);
+char * turnOffPassDissectors(cpCommandParser * parser){
+    return switchPassDissectors(parser, false);
 }
 
-void getSniffedUsersList(cpCommandParser * parser, char ** answer){
+char * getSniffedUsersList(cpCommandParser * parser){
+    char * ret;
+
     if(parser->hasData == 1){
-        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
-        return;
+        ret = statusFailedAnswer(CPERROR_NO_DATA_COMMAND);
+        return ret;
     }
 
-    *answer = calloc(3, 1 /* x Tamanio Usuario+Password */);
-    if(*answer == NULL)
-        return;
+    printf("xd1\n");
 
-    /* TODO: Cargar en answer los usuarios y sus contrasenias 
-       uno por uno, en formato CSV */
+    /* Obtenemos la lista de usuario sniffeados */
+    users_list * userList = get_sniffed_users();
+    if(userList == NULL)
+        return NULL;
+    
+    printf("xd2\n");
+    int reallocCount = 0;
+    ret = calloc(INITIAL_SIZE, sizeof(char));
+    if(ret == NULL)
+        return NULL;
+    printf("xd3\n");
+    int ansSize = strlen(ret);
+    printf("xd4\n");
+    /* Copiamos el titulo del CSV */
+    sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList->size + 1, POP3_CSV_TITLE);
+    printf("xd5\n");
+    node * current = userList->first;
+    for (int i = 0; i < userList->size && current != NULL; i++){
+        printf("xd6\n");
+        int userLen = strlen(current->username);
+        int passLen = strlen(current->password);
+        int lineLen =  userLen + passLen + 2;
 
-   *answer[0] = STATUS_SUCCESS;
-   *answer[1] = 1;   // HAS_DATA = 1
-   return;
+        /* Si falta espacio, reservamos mas memoria */
+        if(INITIAL_SIZE + reallocCount * MEM_BLOCK - ansSize < lineLen){
+            reallocCount++;
+            ret = realloc(ret, INITIAL_SIZE + reallocCount * MEM_BLOCK);
+            if(ret == NULL){
+                printf("Not enough memory for getSniffedUsersList\n");
+                return NULL;
+            }
+        }
+        printf("xd7\n");
+        memcpy(&ret[ansSize], current->username, userLen);
+        ansSize += userLen;
+        ret[ansSize++] = ';';
+        printf("xd8\n");
+        memcpy(&ret[ansSize], current->password, passLen);
+        ansSize += passLen;
+        ret[ansSize++] = '\n';
+    }
+    printf("xd9\n");
+   return ret;
 }
 
-void getMetrics(cpCommandParser * parser, char ** answer){
+char * getMetrics(cpCommandParser * parser){
+    char * ret;
+
     if(parser->hasData == 1){
-        statusFailedAnswer(answer, CPERROR_NO_DATA_COMMAND);
-        return;
+        ret = statusFailedAnswer(CPERROR_NO_DATA_COMMAND);
+        return ret;
     }
 
     int titleLen = strlen(METRICS_CSV_TITLE);
-    *answer = calloc(2*titleLen, sizeof(char));
-    if(*answer == NULL)
-        return;
+    ret = calloc(2*titleLen, sizeof(char));
+    if(ret == NULL)
+        return NULL;
 
-    sprintf(*answer, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 2,
+    sprintf(ret, "%c%c%s%lu;%lu;%lu;%lu;%lu;%lu;%lu\n", STATUS_SUCCESS, 2,
         METRICS_CSV_TITLE, get_current_socks(), get_historic_socks(), 
         get_current_mgmt(), get_historic_mgmt(), get_current_total(),
         get_historic_total(), get_bytes_transferred()
     );
 
-    //TODO: Sacar el '\0'
+    //*answer[strlen(*answer)] = '\n';
 
-   printf("%s", *answer);
-   return;
+   printf("%s", ret);
+   return ret;
 }
 
 
