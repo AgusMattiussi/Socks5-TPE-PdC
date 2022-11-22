@@ -73,5 +73,5 @@ long get_bytes_transferred(){
 void
 free_metrics(){
     free(metrics);
-    free_list(get_sniffed_users());
+    //free_list(get_sniffed_users());
 }

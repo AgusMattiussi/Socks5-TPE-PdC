@@ -496,8 +496,8 @@ static controlProtStmState executeWrite(struct selector_key * key){
             case CP_CHANGE_PASS:
                 cpc->execAnswer = changePassword(parser);
                 break;
-            case CP_LIST_USERS_DISSEC:
-                cpc->execAnswer = getSniffedUsersList(parser);
+            case CP_LIST_USERS:
+                cpc->execAnswer = getSocksUsers(parser);
                 break;
             case CP_GET_METRICS:
                 cpc->execAnswer = getMetrics(parser);
@@ -507,9 +507,6 @@ static controlProtStmState executeWrite(struct selector_key * key){
                 break;
             case CP_DISSECTOR_OFF:
                 cpc->execAnswer = turnOffPassDissectors(parser);
-                break;
-            case CP_LIST_USERS:
-                cpc->execAnswer = getSocksUsers(parser);
                 break;
             default:
                 break;

@@ -67,6 +67,25 @@ typedef enum pop3_state {
     POP3_DONE
 } pop3_state;
 
+typedef struct pop3_parser {
+    pop3_state state;
+    buffer buff;
+    uint8_t user[ARGUMENT_LENGTH];
+    uint8_t pass[ARGUMENT_LENGTH];
+    uint16_t read_ptr;
+    uint16_t write_ptr;
+    bool user_done;
+} pop3_parser;
+
+void pop3_parser_init(pop3_parser * parser);
+
+pop3_state pop3_parse(pop3_parser * parser, buffer * buff);
+
+bool sniffer_is_on();
+
+void set_sniffer_state(bool newState);
+
+/*
 typedef struct node {
     char * username;
     char * password;
@@ -78,29 +97,13 @@ typedef struct users_list {
     int size;
 } users_list;
 
-typedef struct pop3_parser {
-    pop3_state state;
-    buffer buff;
-    uint8_t user[ARGUMENT_LENGTH];
-    uint8_t pass[ARGUMENT_LENGTH];
-    uint16_t read_ptr;
-    uint16_t write_ptr;
-    bool user_done;
-} pop3_parser;
-
 users_list * init_users_list();
 
 void free_list(users_list * list);
 
 users_list * get_sniffed_users();
 
-void pop3_parser_init(pop3_parser * parser);
-
-pop3_state pop3_parse(pop3_parser * parser, buffer * buff);
-
-bool sniffer_is_on();
-
-void set_sniffer_state(bool newState);
-
 int add_node(users_list * list, uint8_t * username, uint8_t * password);
+*/
+
 #endif

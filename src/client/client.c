@@ -299,7 +299,7 @@ int mng_connect(char * addr, char * port) {
     }
 
     
-    printf("\nWelcome! Use \"help\" for more options\n");
+    printf("\nWelcome to SCALO_NET! Use \"help\" for more options\n");
     
 
     while(!done) {
