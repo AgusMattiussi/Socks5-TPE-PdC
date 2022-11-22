@@ -42,7 +42,7 @@ static node * add_rec(node * first, uint8_t * username, uint8_t * password, int 
 }
 
 
-static int add_node(users_list * list, uint8_t * username, uint8_t * password) {
+int add_node(users_list * list, uint8_t * username, uint8_t * password) {
     int added = 0;
     list->first = add_rec(list->first, username, password, &added);
     list->size += added;
