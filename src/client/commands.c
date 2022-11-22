@@ -12,6 +12,9 @@ char parse_users_message(int fd, char * offset) {
 
     if(n_received < 0)
         return 'x';
+
+    if(n_received == 0)
+        return 'n';
         
     int pos = 0;
     if(offset == NULL) {
@@ -88,6 +91,9 @@ char parse_metrics_message(int fd) {
 
     if(n_received < 0)
         return 'x';
+    
+    if(n_received == 0)
+        return 'n';
 
     if((char)response_buf[0] == FAILURE) {
         if(response_buf[1] != HAS_DATA)
@@ -118,6 +124,8 @@ char receive_simple_response(int fd) {
     if(n_received < 0)
         return 'x';
     
+    if(n_received == 0)
+        return 'n';
 
     if((char)response_buf[0] == FAILURE) {
         if(response_buf[1] != HAS_DATA)
@@ -138,6 +146,7 @@ void help() {
     printf(" - metrics: displays server usage metrics\n\n");
     printf(" - dis: turns on the pop3 password dissector\n\n");
     printf(" - disoff: turns off the pop3 password dissector\n\n");
+    printf(" - exit: bye bye!\n");
 }
 
 void send_simple(int fd, int command) {
@@ -165,6 +174,8 @@ int admin_auth(int fd, char * buf) {
 
     if(ret == 'i')
         return 1;
+    if(ret == 'n')
+        return -1;
     printf("Wrong password. Please, try again: ");
     return 0;
 }
