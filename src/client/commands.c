@@ -43,7 +43,6 @@ char parse_users_message(int fd, char * offset) {
         printf("%s\n", current_user);
         row_count--;
     } else {
-        //printf("entro 1\n");
         char aux[MAXLEN] = {0};
         strcat(aux, offset);
         strcat(aux, current_user);
@@ -54,9 +53,8 @@ char parse_users_message(int fd, char * offset) {
     pos += strlen(current_user);
     row_count--;
 
-    //printf("por entrar al while\n");
+    
     while(pos<MAXLEN && row_count > 0) {
-        //printf("%c ", response_buf[pos]);
         if(response_buf[pos++] == TOKEN) {
             current_user = strtok(NULL, str);
             row_count--;
