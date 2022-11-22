@@ -32,23 +32,23 @@ void set_len_to_parse(struct auth_parser * parser, uint8_t to_parse){
 void auth_parse_byte(struct auth_parser * parser, uint8_t to_parse){
     switch(parser->state){
         case AUTH_VER:
-            LogDebug("[AUTH_VER] parseo byte %d\n", to_parse); 
+            LogDebug("[AUTH_VER] parsing byte %d\n", to_parse); 
             if(to_parse == AUTH_VERSION){parser->state = AUTH_ULEN;}
             else{parser->state = AUTH_ERROR;}
             break;
         case AUTH_ULEN:
         case AUTH_PLEN:
-            LogDebug("[AUTH_(U|P)LEN] parseo byte %d\n", to_parse);         
+            LogDebug("[AUTH_(U|P)LEN] parsing byte %d\n", to_parse);         
             set_len_to_parse(parser, to_parse);
             break;
         case AUTH_UNAME:
         case AUTH_PASSWD:
-            LogDebug("[AUTH_UNAME/PASSWD] parseo byte %c\n", to_parse);         
+            LogDebug("[AUTH_UNAME/PASSWD] parsing byte %c\n", to_parse);         
             plain_parse_byte(parser, to_parse);
             break;
         case AUTH_DONE:
         case AUTH_ERROR:
-            LogDebug("[AUTH_DONE/ERROR] parseo byte %d\n", to_parse);         
+            LogDebug("[AUTH_DONE/ERROR] parsing byte %d\n", to_parse);         
             break;
         default:
             LogError("Should never reach this state.");

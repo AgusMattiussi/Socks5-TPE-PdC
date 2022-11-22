@@ -50,7 +50,7 @@ static void initStm(struct state_machine * stm){
 }
 
 static unsigned cpError(struct selector_key * key){
-    LogError("\nERROR CP_ERROR. Cerrando Conexion\n");
+    LogError("\nERROR CP_ERROR. Closing connection\n");
     controlProtConn * cpc = (controlProtConn *) key->data;
     freeControlProtConn(cpc, key->s);
     return CP_ERROR;
@@ -103,7 +103,7 @@ static void freeRec(controlProtConn * current){
     if(current == NULL)
         return;
     freeRec(current->nextConn);
-    LogInfo("Liberando fd: %d\n", current->fd);
+    LogInfo("Free fd: %d\n", current->fd);
     freeControlProtConn(current, current->s);
 }
 
@@ -153,7 +153,7 @@ controlProtConn * newControlProtConn(int fd, fd_selector s){
 }
 
 void freeControlProtConn(controlProtConn * cpc, fd_selector s){
-    LogInfo("\nLIBERANDO CPC\n");
+    LogInfo("\nFree CPC\n");
 
     if(cpc == NULL)
         return;
@@ -299,7 +299,7 @@ static controlProtStmState authRead(struct selector_key * key){
     /* Si el cpReadHandler se desperto, siempre deberia haber algo
         para leer del readBuffer */
     if(!buffer_can_read(cpc->readBuffer)){
-        LogInfo("[AUTH/authRead] Buffer Vacio: !buffer_can_read\n");
+        LogInfo("[AUTH/authRead] Empty buffer: !buffer_can_read\n");
         return CP_ERROR;
     }
 
@@ -311,7 +311,7 @@ static controlProtStmState authRead(struct selector_key * key){
         parser->currentState = cpapParseByte(parser, buffer_read(cpc->readBuffer));
 
         if(parser->currentState == CPAP_ERROR){
-            LogError("[AUTH/authRead] Error: CPAP_ERROR parseando entrada\n");
+            LogError("[AUTH/authRead] Error: CPAP_ERROR parsing input\n");
             return CP_ERROR;
         }
     }
@@ -414,7 +414,7 @@ static controlProtStmState executeRead(struct selector_key * key){
     /* Si ya escribi la respuesta y se la envie al cliente, puedo 
         pasar al siguiente estado */
     if(!buffer_can_read(cpc->readBuffer)){
-        LogError("[EXECUTE/executeRead] Buffer Vacio: !buffer_can_read\n");
+        LogError("[EXECUTE/executeRead] Empty buffer: !buffer_can_read\n");
         return CP_AUTH;
     }
 
@@ -426,7 +426,7 @@ static controlProtStmState executeRead(struct selector_key * key){
         parser->currentState = cpcpParseByte(parser, buffer_read(cpc->readBuffer));
         
         if(parser->currentState == CPCP_ERROR){
-            LogError("[EXECUTE/executeRead] CPCP_ERROR parseando entrada\n");
+            LogError("[EXECUTE/executeRead] CPCP_ERROR parsing input\n");
             return CP_ERROR;
         }
     }

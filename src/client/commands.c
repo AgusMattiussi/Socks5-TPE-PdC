@@ -124,15 +124,15 @@ char receive_simple_response(int fd) {
 }
 
 void help() {
-    printf("\n¡Bienvenido a SCALO_NET! Los comandos disponibles son los siguientes:\n\n");
-    printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
-    printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
-    printf("editpass <usuario> <newpass>: editar contraseña\n\n");
-    printf("list: listar usuarios del servidor\n\n");
-    printf("listdiss: listar usuarios y contraseñas descubiertas\n\n");
-    printf("metrics: obtener métricas de uso del servidor\n\n");
-    printf("dis: prender password dissector\n\n");
-    printf("disoff: apagar password dissector\n\n");
+    printf("Welcome to SCALO_NET! The available commands are the following:\n\n");
+    printf(" - adduser <user> <pass>: adds a new user to socks5 server\n\n");
+    printf(" - deleteuser <user>: delete an existing user from socks5 server\n\n");
+    printf(" - editpass <user> <newpass>: edits add existing user password's\n\n");
+    printf(" - list: list all users of socks5 server\n\n");
+    printf(" - listdiss: lists sniffed pop3 users and passwords\n\n");
+    printf(" - metrics: displays server usage metrics\n\n");
+    printf(" - dis: turns on the pop3 password dissector\n\n");
+    printf(" - disoff: turns off the pop3 password dissector\n\n");
 }
 
 void send_simple(int fd, int command) {

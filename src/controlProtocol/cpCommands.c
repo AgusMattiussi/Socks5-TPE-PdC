@@ -80,7 +80,7 @@ char * removeProxyUser(cpCommandParser * parser){
 
     if(parser->hasData == 0){
         ret = statusFailedAnswer(CPERROR_COMMAND_NEEDS_DATA);
-        LogError("Fallo porque no tengo data!\n");
+        LogError("RemoveProxyUser: no data!\n");
         return ret;
     }
 

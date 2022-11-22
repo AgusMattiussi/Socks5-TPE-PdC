@@ -90,10 +90,10 @@ hello_write(struct selector_key * key){
 
     switch(socks->parsers->connect_parser->auth){
         case NO_AUTH:
-            LogDebug("STM pasa a estado REQ_READ\n");
+            LogDebug("STM's new state is REQ_READ\n");
             return REQ_READ;
         case USER_PASS:
-            LogDebug("STM pasa a estado AUTH_READ\n");
+            LogDebug("STM's new state is AUTH_READ\n");
             return AUTH_READ;
         case GSSAPI:
             LogDebug("GSSAPI is out of this project's scope.");

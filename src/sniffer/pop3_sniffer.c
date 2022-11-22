@@ -59,11 +59,10 @@ static pop3_state handle_error(pop3_parser * parser, uint8_t c) {
 static pop3_state parse_user_cmd(pop3_parser * parser, uint8_t c){
     if(toupper(c) == pop3_user_cmd[parser->read_ptr]){
         parser->read_ptr++;
-        if(pop3_user_cmd[parser->read_ptr] == '\0') { // Lei "USER " en el buffer -> ahora me lo tengo que guardar
-            parser->read_ptr = 0; // reinicio el ptr de lectura
+        if(pop3_user_cmd[parser->read_ptr] == '\0') { 
+            parser->read_ptr = 0; 
             return POP3_USER;
         }
-        // tengo que seguir parseando el comando para ver si es "USER "
         return POP3_USER_CMD;
     }
     return handle_error(parser, c);
