@@ -42,9 +42,9 @@ user(char *s) {
 
 static void
 version(void) {
-    fprintf(stderr, "socks5v version 0.0\n"
-                    "ITBA Protocolos de Comunicación 2022/2 -- Grupo 3\n"
-                    "AQUI VA LA LICENCIA\n");
+    fprintf(stderr, "SOCKSv5 version 0.1\n"
+                    "ITBA Protocolos de Comunicación 2022/2 -- Grupo 3\n");
+    exit(1);
 }
 
 static void
@@ -54,7 +54,7 @@ usage(const char * progname) {
         "\n"
         "   -h               Imprime la ayuda y termina.\n"
         "   -l <SOCKS addr>  Dirección donde servirá el proxy SOCKS.\n"
-        "   -L <conf  addr>  Dirección donde servirá el servicio de management.\n"
+        "   -L <conf addr>  Dirección donde servirá el servicio de management.\n"
         "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
         "   -P <conf port>   Puerto entrante conexiones configuracion\n"
         "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"

@@ -121,10 +121,13 @@ add_user(user_t * user){
 
 int 
 remove_user(char * username){
-    printf("Estoy entrando a add_user con parametro %s\n", username);
+    printf("Estoy entrando a remove_user con parametro %s\n", username);
 
     int pos = user_exists_by_username(username);
-    if(pos == -1){LogError("User does not exist."); return -1;}
+    if(pos == -1) {
+        LogError("User does not exist."); 
+        return -1;
+    }
     struct user_t * to_delete = users[pos];
     users[pos] = users[total_users-1];
     free(to_delete->name);
@@ -140,7 +143,10 @@ change_password(char * username, char * new_password){
     printf("Estoy entrando a change_pass con parametros %s\t%s\n", username, new_password);
 
     int pos = user_exists_by_username(username);
-    if(pos == -1){LogError("User does not exist."); return -1;}
+    if(pos == -1) {
+        LogError("User does not exist."); 
+        return -1;
+    }
     free(users[pos]->pass);
     users[pos]->pass = malloc(strlen(new_password + 1));
     strcpy(users[pos]->pass, new_password);
