@@ -26,6 +26,9 @@ const struct fd_handler conn_actions_handler = {
 };
 
 
+const struct fd_handler * get_conn_actions_handler() {
+    return &conn_actions_handler;
+}
 
 
 void 
