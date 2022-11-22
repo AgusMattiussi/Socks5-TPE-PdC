@@ -144,58 +144,6 @@ char * turnOffPassDissectors(cpCommandParser * parser){
     return switchPassDissectors(parser, false);
 }
 
-char * getSniffedUsersList(cpCommandParser * parser){
-    char * ret;
-
-    if(parser->hasData == 1){
-        ret = statusFailedAnswer(CPERROR_NO_DATA_COMMAND);
-        return ret;
-    }
-    /* Obtenemos la lista de usuario sniffeados */
-    users_list * userList = get_sniffed_users();
-    
-    int reallocCount = 0;
-    ret = calloc(INITIAL_SIZE, sizeof(char));
-    if(ret == NULL)
-        return NULL;
-    int ansSize = strlen(POP3_CSV_TITLE) + 2;
-    /* Copiamos el titulo del CSV */
-    sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList == NULL ? 1 : userList->size + 1, POP3_CSV_TITLE);
-    if(userList == NULL || userList->size == 0){
-        return ret;
-    }
-
-    node * current = userList->first;
-    for (int i = 0; i < userList->size && current != NULL; i++){
-        int userLen = strlen(current->username)+1;
-        int passLen = strlen(current->password)+1;
-        int lineLen =  userLen + passLen + 2;
-
-        /* Si falta espacio, reservamos mas memoria */
-        if(INITIAL_SIZE + reallocCount * MEM_BLOCK - ansSize < lineLen){
-            reallocCount++;
-            ret = realloc(ret, INITIAL_SIZE + reallocCount * MEM_BLOCK);
-            if(ret == NULL){
-                LogError("Not enough memory for getSniffedUsersList\n");
-                return NULL;
-            }
-        }
-
-        strcat(ret, current->username);
-        ansSize += userLen;
-
-        strcat(ret, ";");
-
-        ansSize += passLen;
-        strcat(ret, current->password);
-        strcat(ret, "\n");
-
-        current = current->next;
-    }
-    return ret;
-}
-
-
 
 char * getMetrics(cpCommandParser * parser){
     char * ret;

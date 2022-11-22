@@ -3,56 +3,6 @@
 static bool sniffer_state = true;
 static const char * pop3_user_cmd = "USER ";
 static const char * pop3_pass_cmd = "PASS ";
-static users_list * sniffed_users;
-
-users_list * init_users_list() {
-    return calloc(1, sizeof(users_list));
-}
-
-static void free_node(node * first_node){
-    if (first_node == NULL)
-           return;
-    free_node(first_node->next);
-    free(first_node->username);
-    free(first_node->password);
-    free(first_node);
-}
-
-void free_list(users_list * list) {
-    if(list != NULL) {
-        free_node(list->first);
-        free(list);
-    }
-}
-
-static node * add_rec(node * first, uint8_t * username, uint8_t * password, int * flag) {
-    if (first == NULL) {
-        node * aux = malloc(sizeof(node));
-        aux->username = malloc(sizeof(strlen((char *) username)+1));
-        strcpy((char *) aux->username, (char *) username);
-        aux->password = malloc(sizeof(strlen((char *)password)+1));
-        strcpy((char *) aux->password, (char *) password);
-        aux->next = first;
-        *flag = 1;
-        return aux;
-    } else {
-        first->next = add_rec(first->next, username, password, flag);
-    }
-    return first;
-}
-
-
-int add_node(users_list * list, uint8_t * username, uint8_t * password) {
-    int added = 0;
-    list->first = add_rec(list->first, username, password, &added);
-    list->size += added;
-    return added;
-}
-
-users_list * get_sniffed_users(){
-    return sniffed_users;
-}
-
 
 static pop3_state handle_error(pop3_parser * parser, uint8_t c) {
     return parser->user_done? POP3_PASS_CMD : POP3_USER_CMD;
@@ -148,8 +98,10 @@ void pop3_parser_init(pop3_parser * parser){
     parser->write_ptr = 0;
     parser->user_done = false;
 
+    /* 
     if(sniffed_users == NULL) 
         sniffed_users = init_users_list();
+    */
 }
 
 pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
@@ -164,7 +116,6 @@ pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
 
     
     if(ret == POP3_DONE) {
-        add_node(sniffed_users, parser->user, parser->pass);
         pop3_parser_init(parser);
     }
 
@@ -178,3 +129,55 @@ bool sniffer_is_on(){
 void set_sniffer_state(bool newState){
     sniffer_state = newState;
 }
+
+/*
+static users_list * sniffed_users;
+
+users_list * init_users_list() {
+    return calloc(1, sizeof(users_list));
+}
+
+static void free_node(node * first_node){
+    if (first_node == NULL)
+           return;
+    free_node(first_node->next);
+    free(first_node->username);
+    free(first_node->password);
+    free(first_node);
+}
+
+void free_list(users_list * list) {
+    if(list != NULL) {
+        free_node(list->first);
+        free(list);
+    }
+}
+
+static node * add_rec(node * first, uint8_t * username, uint8_t * password, int * flag) {
+    if (first == NULL) {
+        node * aux = malloc(sizeof(node));
+        aux->username = malloc(sizeof(strlen((char *) username)+1));
+        strcpy((char *) aux->username, (char *) username);
+        aux->password = malloc(sizeof(strlen((char *)password)+1));
+        strcpy((char *) aux->password, (char *) password);
+        aux->next = first;
+        *flag = 1;
+        return aux;
+    } else {
+        first->next = add_rec(first->next, username, password, flag);
+    }
+    return first;
+}
+
+
+int add_node(users_list * list, uint8_t * username, uint8_t * password) {
+    int added = 0;
+    list->first = add_rec(list->first, username, password, &added);
+    list->size += added;
+    return added;
+}
+
+users_list * get_sniffed_users(){
+    return sniffed_users;
+}
+*/
