@@ -3,7 +3,7 @@
 #include "../logger/logger.h"
 
 #define INITIAL_SOCKS_U_SIZE 512
-#define SOCKS_U_HEADER "user\n"
+#define SOCKS_U_HEADER "Socks users: \n\n\n"
 
 static char * noDataStatusSuccessAnswer();
 static char * statusFailedAnswer(controlProtErrorCode errorCode);
