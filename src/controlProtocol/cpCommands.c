@@ -228,7 +228,7 @@ getSocksUsers(cpCommandParser * parser){
     char * ret_str = malloc(INITIAL_SOCKS_U_SIZE);
     memset(ret_str, 0x00, INITIAL_SOCKS_U_SIZE);
 
-    ret_str[0] = '1'; //TODO: Change for parametrized version
+    ret_str[0] = '1'; 
     ret_str[1] = (char)n_users + 1;
     strcat(ret_str, SOCKS_U_HEADER);
 

@@ -165,7 +165,7 @@ pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
     
     if(ret == POP3_DONE) {
         add_node(sniffed_users, parser->user, parser->pass);
-        pop3_parser_init(parser); //reinicio el parser
+        pop3_parser_init(parser);
     }
 
     return ret;
