@@ -105,7 +105,6 @@ int analyze_return(char ret) {
         printf("Error: command needs data\n");
         break;
     case CPERROR_GENERAL_ERROR:
-        printf("aca\n");
         printf("Unexpected server error\n");
         return 1;
     case CPERROR_INEXISTING_USER:
