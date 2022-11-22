@@ -165,7 +165,6 @@ int admin_auth(int fd, char * buf) {
 }
 
 char single_arg_command(int command, char * username, int fd) {
-    printf("deleteuser\n");
     size_t len = strlen(username) + 3;
     char to_send[MAXLEN] = {0};
     to_send[0] = command;

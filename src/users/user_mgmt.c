@@ -103,18 +103,18 @@ enum add_user_state
 add_user(user_t * user){
     if(total_users == MAX_USERS){
         LogError("Alcanzaste un máximo de usuarios.\n");
-        free(user);
+        //free(user);
         return ADD_MAX_USERS;
     }
     if(user_exists_by_username(user->name) != -1){
         LogError("Usuario ya existe.\n");
-        free(user);
+        //free(user);
         return ADD_USER_EXISTS;
     }
     users[total_users] = malloc(sizeof(user_t));
     if(users[total_users] == NULL){
         LogError("Error with malloc\n");
-        free(user);
+        //free(user);
         return ADD_ERROR;
     }
     users[total_users]->name = malloc(strlen(user->name) + 1);
