@@ -18,7 +18,7 @@ Teniendo estas dos dependencias, realizamos lo siguiente:
 
 ## Guía de uso
 
-Dentro de la raíz del repositorio, se encuentran los archivo *socks5d.8*, y *SCALO_NET.txt* que describen las funciones disponibles para cada ejecutable. Se ofrece un resúmen de lo que muestran ambas debajo:
+Las funcionaliades disponibles para ambos ejecutables son:
 
 - Servidor
     - `-h`: Imprime ayuda y termina
