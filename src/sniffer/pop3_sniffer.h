@@ -102,4 +102,5 @@ bool sniffer_is_on();
 
 void set_sniffer_state(bool newState);
 
+int add_node(users_list * list, uint8_t * username, uint8_t * password);
 #endif

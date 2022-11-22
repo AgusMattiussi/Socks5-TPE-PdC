@@ -42,7 +42,7 @@ static node * add_rec(node * first, uint8_t * username, uint8_t * password, int 
 }
 
 
-static int add_node(users_list * list, uint8_t * username, uint8_t * password) {
+int add_node(users_list * list, uint8_t * username, uint8_t * password) {
     int added = 0;
     list->first = add_rec(list->first, username, password, &added);
     list->size += added;
@@ -165,7 +165,7 @@ pop3_state pop3_parse(pop3_parser * parser, buffer * buff){
     
     if(ret == POP3_DONE) {
         add_node(sniffed_users, parser->user, parser->pass);
-        pop3_parser_init(parser); //reinicio el parser
+        pop3_parser_init(parser);
     }
 
     return ret;

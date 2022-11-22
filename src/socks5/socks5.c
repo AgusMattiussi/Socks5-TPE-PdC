@@ -609,10 +609,9 @@ copy_write(struct selector_key * key) {
         return ERROR;
     }
 
-    //buffer_read_adv(copy->read_buff, bytes_sent);
     add_bytes_transferred((long)bytes_sent);
     copy->aux->interests = (copy->aux->interests | OP_READ) & copy->aux->int_connection;
-    selector_set_interest(key->s, copy->aux->fd, copy->aux->interests); //TODO: Capture return?
+    selector_set_interest(key->s, copy->aux->fd, copy->aux->interests);
 
     if (!buffer_can_read(copy->read_buff)) {
         copy->interests = (copy->interests & OP_READ) & copy->int_connection;
