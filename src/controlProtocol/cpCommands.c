@@ -3,7 +3,7 @@
 #include "../logger/logger.h"
 
 #define INITIAL_SOCKS_U_SIZE 512
-#define SOCKS_U_HEADER "Socks users: \n\n\n"
+#define SOCKS_U_HEADER "Socks users: \n"
 
 static char * noDataStatusSuccessAnswer();
 static char * statusFailedAnswer(controlProtErrorCode errorCode);
@@ -230,14 +230,11 @@ getSocksUsers(cpCommandParser * parser){
     memset(ret_str, 0x00, INITIAL_SOCKS_U_SIZE);
 
     ret_str[0] = '1'; //TODO: Change for parametrized version
-
-    char * aux = calloc(5, sizeof(char));
-
-    sprintf(aux, "%d", n_users + 1);
+    ret_str[1] = (char)n_users + 1;
     // ret[1] = userList == NULL ? 1 : userList->size + 1;
-    strcat(ret_str, aux);
+    //trcat(ret_str, aux);
     strcat(ret_str, SOCKS_U_HEADER);
-    strcat(ret_str, "\n\n");
+    //strcat(ret_str, "\n\n");
 
     for(int i = 0; i < n_users; i++){
         strcat(ret_str, users[i]->name);
@@ -247,5 +244,6 @@ getSocksUsers(cpCommandParser * parser){
     }
     return ret_str;
 }
+
 
 

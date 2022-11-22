@@ -100,19 +100,26 @@ int analyze_return(char ret) {
         break;
     case CPERROR_ALREADY_EXISTS:
         printf("Error: user already exists\n");
+        break;
     case CPERROR_COMMAND_NEEDS_DATA:
         printf("Error: command needs data\n");
+        break;
     case CPERROR_GENERAL_ERROR:
-        printf("Unexpected server error. Closing...\n");
+        printf("aca\n");
+        printf("Unexpected server error\n");
         return 1;
     case CPERROR_INEXISTING_USER:
         printf("Error: user does not exist\n");
+        break;
     case CPERROR_INVALID_FORMAT:
         printf("Error: invalid format\n");
+        break;
     case CPERROR_NO_DATA_COMMAND:
         printf("Error: command doesn't allow data\n");
+        break;
     case CPERROR_USER_LIMIT:
         printf("Error: user limit reached\n");
+        break;
     default:
         break;
     }

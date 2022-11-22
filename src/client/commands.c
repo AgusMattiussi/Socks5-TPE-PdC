@@ -9,7 +9,9 @@ char parse_users_message(int fd, char * offset) {
     //FIXME: Estaba sin inicializar
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
-    //printf("recibí %s\n", response_buf);
+
+    if(n_received < 0)
+        return 'x';
         
     int pos = 0;
     if(offset == NULL) {
@@ -21,6 +23,11 @@ char parse_users_message(int fd, char * offset) {
         //row_count = 1;
         row_count = (int)response_buf[1];
         pos = 2;
+
+        if(row_count == 1) {
+        printf("No users yet\n");
+        return 'i';
+        }
     }
 
     if(offset==NULL)
