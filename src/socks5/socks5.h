@@ -94,7 +94,6 @@ typedef struct socks_conn_model {
 
 socks_conn_model * new_socks_conn();
 
-//TODO: pasar a mng.c
 struct state_definition * mng_all_states();
 uint32_t socks_get_buf_size();
 

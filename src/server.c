@@ -108,7 +108,7 @@ static void passive_cp_socket_handler(struct selector_key * key) {
         return;
     }
 
-    if(selector_register(key->s, new->fd, /*TODO: Completar handlers*/ &cpFdHandler, new->interests, new) != 0){
+    if(selector_register(key->s, new->fd, &cpFdHandler, new->interests, new) != 0){
         LogError(" ERROR en passive_cp_socket_handler (selector_register)\n");
         freeControlProtConn(new, key->s); // Esto incluye el cerrado de clientFd
         return;

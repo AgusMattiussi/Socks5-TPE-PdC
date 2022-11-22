@@ -127,14 +127,9 @@ hello_write(struct selector_key * key){
         return ERROR;
     }
     if(ret_state == AUTH_DONE){ 
-        uint8_t is_authenticated = process_authentication_request((char*)parser->username, 
+        int is_authenticated = process_authentication_request((char*)parser->username, 
                                                                   (char*)parser->password);
-        /*if(is_authenticated == -1){
-            LogError("Error authenticating user. Username or password are incorrect, or user does not exist. Exiting.\n");
-            
-            return ERROR;
-        }*/
-        set_curr_user((char*)parser->username);
+        if(is_authenticated != -1) set_curr_user((char*)parser->username);
         selector_status ret_selector = selector_set_interest_key(key, OP_WRITE);
         if(ret_selector != SELECTOR_SUCCESS) return ERROR;        
         size_t n_available;
@@ -515,13 +510,11 @@ copy_on_arrival(unsigned state, struct selector_key * key) {
     int init_ret = init_copy_structure(socks, copy, CLI);
     if(init_ret == -1){
         LogError("Error initializng copy structures\n");
-        //return ERROR;
     }
     copy = &socks->src_copy;
     init_ret = init_copy_structure(socks, copy, SRC);
     if(init_ret == -1){
         LogError("Error initializng copy structures\n");
-        //return ERROR;
     }
 
     if(sniffer_is_on()){

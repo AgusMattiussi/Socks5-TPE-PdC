@@ -27,6 +27,7 @@ Dentro de la raíz del repositorio, se encuentran los archivo *socks5d.8*, y *SC
     - `-p <port>`: Puerto entrante conexiones SOCKS.
     - `-P <port>`: Puerto entrante conexiones configuracion
     - `-u <user>:<pass>`: Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.
+    - `-N`: Deshabilita los password dissectors
     - `-v`: Imprime información sobre versión y termina
     - `-m`: Activa la opción de logger
     - `-n`: Desactiva la opción de debugger (desactivada por defecto)
