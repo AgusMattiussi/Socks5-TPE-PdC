@@ -89,8 +89,8 @@ int analyze_return(char ret) {
     case 'x':
         printf("Unexpected server error. Closing...\n");
         return 1;
-        break;
     case 'i':
+        printf("OK!\n");
         break;
     case CPERROR_ALREADY_EXISTS:
         printf("Error: user already exists\n");

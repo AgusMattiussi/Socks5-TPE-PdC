@@ -28,11 +28,9 @@ check_buff_and_send(buffer * buff_ptr, int socket){
     return n_sent;
 }
 
-
 /*----------------------
  |  Connection functions
  -----------------------*/
-
 
 static enum socks_state hello_read(struct selector_key * key){
     

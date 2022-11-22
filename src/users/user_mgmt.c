@@ -69,16 +69,34 @@ finally:
 
 int
 user_exists_by_username(char * username){
+    int ret = -1;
     if(username == NULL){
         LogError("Username is invalid.");
-        return -1;
+        return ret;
     }
     for(int i = 0; i < total_users; i++){
+        printf("Estoy comparando %s con %s", username, users[i]->name);
         if(strcmp(username, users[i]->name) == 0){
-            return i;
+            ret = i;
+            break;
         }
     }
-    return -1;
+    return ret;
+}
+
+int 
+remove_user(char * username){
+    printf("Estoy entrando a add_user con parametro %s (%d)\n", username, strlen(username));
+    int pos = user_exists_by_username(username);
+    if(pos == -1){LogError("User does not exist."); return -1;}
+    struct user_t * to_delete = users[pos];
+    users[pos] = users[total_users-1];
+    free(to_delete->name);
+    free(to_delete->pass);
+    free(to_delete);
+    total_users--;
+    printf("Lo borre\n");
+    return 0;
 }
 
 enum add_user_state 
@@ -121,7 +139,6 @@ add_user(user_t * user){
 
 int 
 remove_user(char * username){
-    printf("Estoy entrando a remove_user con parametro %s\n", username);
 
     int pos = user_exists_by_username(username);
     if(pos == -1) {
