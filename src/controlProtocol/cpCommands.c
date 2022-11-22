@@ -53,7 +53,7 @@ char * addProxyUser(cpCommandParser * parser){
         .name = user,
         .pass = password
     }; 
-    printf("user: %s(%ld), pass: %s(%ld)", user, strlen(user), password, strlen(password));
+    LogInfo("user: %s(%ld), pass: %s(%ld)", user, strlen(user), password, strlen(password));
 
     uint8_t result = add_user(&new);
 
@@ -89,7 +89,7 @@ char * removeProxyUser(cpCommandParser * parser){
 
     /* user = malloc(parser->dataSize);
     memcpy(user, parser->data, parser->dataSize); */
-    printf("Remove user: %s\n", parser->data);
+    LogError("Remove user: %s\n", parser->data);
     if(remove_user(parser->data) < 0) {
         ret = statusFailedAnswer(CPERROR_INEXISTING_USER);
     } else {
@@ -115,7 +115,6 @@ char * changePassword(cpCommandParser * parser){
         ret = statusFailedAnswer(CPERROR_INVALID_FORMAT);
         return ret;
     }
-    printf("Newpass: %s\n", newPass);
     if(change_password(user, newPass) < 0) {
         ret = statusFailedAnswer(CPERROR_INEXISTING_USER);
     } else {
@@ -152,30 +151,22 @@ char * getSniffedUsersList(cpCommandParser * parser){
         ret = statusFailedAnswer(CPERROR_NO_DATA_COMMAND);
         return ret;
     }
-
-    printf("xd1\n");
-
     /* Obtenemos la lista de usuario sniffeados */
     users_list * userList = get_sniffed_users();
     
-    printf("xd2\n");
     int reallocCount = 0;
     ret = calloc(INITIAL_SIZE, sizeof(char));
     if(ret == NULL)
         return NULL;
-    printf("xd3\n");
     int ansSize = strlen(POP3_CSV_TITLE) + 2;
-    printf("xd4\n");
     /* Copiamos el titulo del CSV */
     sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList == NULL ? 1 : userList->size + 1, POP3_CSV_TITLE);
-    printf("xd5\n");
     if(userList == NULL || userList->size == 0){
         return ret;
     }
 
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
-        printf("xd6\n");
         int userLen = strlen(current->username)+1;
         int passLen = strlen(current->password)+1;
         int lineLen =  userLen + passLen + 2;
@@ -185,17 +176,15 @@ char * getSniffedUsersList(cpCommandParser * parser){
             reallocCount++;
             ret = realloc(ret, INITIAL_SIZE + reallocCount * MEM_BLOCK);
             if(ret == NULL){
-                printf("Not enough memory for getSniffedUsersList\n");
+                LogError("Not enough memory for getSniffedUsersList\n");
                 return NULL;
             }
         }
 
-        printf("xd7\n");
         memcpy(&ret[ansSize], current->username, userLen);
         ansSize += userLen;
 
         ret[ansSize++] = ';';
-        printf("xd8\n");
         memcpy(&ret[ansSize], current->password, passLen);
         ansSize += passLen;
         ret[ansSize++] = '\n';
@@ -203,16 +192,6 @@ char * getSniffedUsersList(cpCommandParser * parser){
         //snprintf(ret, "%s%s;%s\n", ret, current->username, current->password);
 
         current = current->next;
-    }
-    printf("xd9\n");
-    printf("RET: \n%s\n\n", ret);
-    node * current2 = userList->first;
-    
-    int i = 0;
-    while(current2 != NULL){
-        printf("Usuario sniffeado %d:\nUser: %s\nPass: %s\n\n", i, current2->username, current2->password);
-        current2 = current2->next;
-        i++;
     }
     return ret;
 }
@@ -240,13 +219,11 @@ char * getMetrics(cpCommandParser * parser){
 
     //*answer[strlen(*answer)] = '\n';
 
-   printf("%s", ret);
    return ret;
 }
 
 char * 
 getSocksUsers(cpCommandParser * parser){
-    printf("Entro a get_socks_users\n");
     user_t ** users = get_all_users();
     uint8_t n_users = get_total_curr_users();
     char * ret_str = malloc(INITIAL_SOCKS_U_SIZE);
@@ -268,7 +245,6 @@ getSocksUsers(cpCommandParser * parser){
         //strcat(ret_str, users[i]->pass);
         strcat(ret_str, "\n");
     }
-    printf("String que está: %s\n", ret_str);
     return ret_str;
 }
 

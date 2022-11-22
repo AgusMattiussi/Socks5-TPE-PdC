@@ -103,7 +103,7 @@ static void freeRec(controlProtConn * current){
     if(current == NULL)
         return;
     freeRec(current->nextConn);
-    printf("Liberando fd: %d\n", current->fd);
+    LogInfo("Liberando fd: %d\n", current->fd);
     freeControlProtConn(current, current->s);
 }
 
@@ -452,7 +452,6 @@ static controlProtStmState executeWrite(struct selector_key * key){
     /* Si ya escribi la respuesta y se la envie al cliente, puedo 
         pasar a leer el siguiente comando */
     if(cpc->execAnsWritten && !buffer_can_read(cpc->writeBuffer)){
-        printf("Termino el comando\n");
         cpc->execAnsWritten = false;
         cpc->interests = OP_READ;
         selector_set_interest_key(key, cpc->interests);
