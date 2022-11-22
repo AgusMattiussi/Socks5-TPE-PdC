@@ -3,8 +3,6 @@
 #include "include/metrics.h"
 
 #define MAX_QUEUE 50
-
-
 static fd_selector selector;
 
 static void passive_socks_socket_handler(struct selector_key * key);
@@ -62,15 +60,10 @@ close_socks_conn(socks_conn_model * socks) {
     free(socks);
 }
 
-
-static void dummyBlock(struct selector_key * key){
-    LogInfo("\n DUMMY BLOCK\n");
-}
-
 const fd_handler cpFdHandler = {
     .handle_read = cpReadHandler,
     .handle_write = cpWriteHandler,
-    .handle_block = dummyBlock,
+    .handle_block = NULL,
     .handle_close = cpCloseHandler
 };
 
@@ -95,7 +88,7 @@ static void passive_cp_socket_handler(struct selector_key * key) {
 
     /* Inicializamos la estructura con los datos de esta conexion */
     // TODO: Considerar aniadirlo a una lista para liberar todo al?
-    new = newControlProtConn(clientFd);
+    new = newControlProtConn(clientFd, key->s);
     if(new == NULL){
         LogError(" ERROR en passive_cp_socket_handler (newControlProtConn)\n");
         close(clientFd);
@@ -265,4 +258,7 @@ void
 set_selector(fd_selector * new_selector){ selector = *new_selector; }
 
 void
-cleanup(){ selector_destroy(selector); }
+cleanup(){
+    freeCpConnList();
+    selector_destroy(selector); 
+}
