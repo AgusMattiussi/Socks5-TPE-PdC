@@ -152,34 +152,23 @@ char * getSniffedUsersList(cpCommandParser * parser){
         return ret;
     }
     /* Obtenemos la lista de usuario sniffeados */
-    printf("xd1\n");
     users_list * userList = get_sniffed_users();
-    printf("xd2\n");
-
-
-
-    add_node(userList, (uint8_t *) "Juli", (uint8_t *)"capo");
-    add_node(userList, (uint8_t *)"userrrr", (uint8_t *)"passss");
-    printf("xd3\n");
+    
     int reallocCount = 0;
     ret = calloc(INITIAL_SIZE, sizeof(char));
     if(ret == NULL)
         return NULL;
-    
+    int ansSize = strlen(POP3_CSV_TITLE) + 2;
     /* Copiamos el titulo del CSV */
     sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList == NULL ? 1 : userList->size + 1, POP3_CSV_TITLE);
-    int ansSize = strlen(ret);
-
     if(userList == NULL || userList->size == 0){
         return ret;
     }
 
-    
-
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
-        int userLen = strlen(current->username);
-        int passLen = strlen(current->password);
+        int userLen = strlen(current->username)+1;
+        int passLen = strlen(current->password)+1;
         int lineLen =  userLen + passLen + 2;
 
         /* Si falta espacio, reservamos mas memoria */
@@ -192,14 +181,16 @@ char * getSniffedUsersList(cpCommandParser * parser){
             }
         }
 
-        memcpy(&(ret[--ansSize]), current->username, userLen);
+        strcat(ret, current->username);
         ansSize += userLen;
-        ret[ansSize++] = ';';
 
-        memcpy(&(ret[ansSize]), current->password, passLen);
+        strcat(ret, ";");
+
         ansSize += passLen;
-        ret[ansSize++] = '\n';
+        strcat(ret, current->password);
+        strcat(ret, "\n");
 
+        current = current->next;
     }
     return ret;
 }
