@@ -26,5 +26,7 @@ int remove_user(char * username);
 int change_password(char * username, char * new_password);
 int
 user_exists(char * username, char * password);
+user_t **
+get_all_users();
 
 #endif

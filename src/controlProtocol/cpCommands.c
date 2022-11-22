@@ -2,6 +2,9 @@
 #include "../include/args.h"
 #include "../logger/logger.h"
 
+#define INITIAL_SOCKS_U_SIZE 512
+#define SOCKS_U_HEADER "user\n"
+
 static char * noDataStatusSuccessAnswer();
 static char * statusFailedAnswer(controlProtErrorCode errorCode);
 static char * switchPassDissectors(cpCommandParser * parser, bool value);
@@ -160,7 +163,7 @@ char * getSniffedUsersList(cpCommandParser * parser){
     if(ret == NULL)
         return NULL;
     printf("xd3\n");
-    int ansSize = strlen(ret);
+    int ansSize = strlen(POP3_CSV_TITLE) + 2;
     printf("xd4\n");
     /* Copiamos el titulo del CSV */
     sprintf(ret, "%c%c%s", STATUS_SUCCESS, userList == NULL ? 1 : userList->size + 1, POP3_CSV_TITLE);
@@ -172,8 +175,8 @@ char * getSniffedUsersList(cpCommandParser * parser){
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
         printf("xd6\n");
-        int userLen = strlen(current->username);
-        int passLen = strlen(current->password);
+        int userLen = strlen(current->username)+1;
+        int passLen = strlen(current->password)+1;
         int lineLen =  userLen + passLen + 2;
 
         /* Si falta espacio, reservamos mas memoria */
@@ -185,18 +188,35 @@ char * getSniffedUsersList(cpCommandParser * parser){
                 return NULL;
             }
         }
+
         printf("xd7\n");
         memcpy(&ret[ansSize], current->username, userLen);
         ansSize += userLen;
+
         ret[ansSize++] = ';';
         printf("xd8\n");
         memcpy(&ret[ansSize], current->password, passLen);
         ansSize += passLen;
         ret[ansSize++] = '\n';
+
+        //snprintf(ret, "%s%s;%s\n", ret, current->username, current->password);
+
+        current = current->next;
     }
     printf("xd9\n");
-   return ret;
+    printf("RET: \n%s\n\n", ret);
+    node * current2 = userList->first;
+    
+    int i = 0;
+    while(current2 != NULL){
+        printf("Usuario sniffeado %d:\nUser: %s\nPass: %s\n\n", i, current2->username, current2->password);
+        current2 = current2->next;
+        i++;
+    }
+    return ret;
 }
+
+
 
 char * getMetrics(cpCommandParser * parser){
     char * ret;
@@ -223,5 +243,32 @@ char * getMetrics(cpCommandParser * parser){
    return ret;
 }
 
+char * 
+getSocksUsers(cpCommandParser * parser){
+    printf("Entro a get_socks_users\n");
+    user_t ** users = get_all_users();
+    uint8_t n_users = get_total_curr_users();
+    char * ret_str = malloc(INITIAL_SOCKS_U_SIZE);
+    memset(ret_str, 0x00, INITIAL_SOCKS_U_SIZE);
+
+    ret_str[0] = '1'; //TODO: Change for parametrized version
+
+    char * aux = calloc(5, sizeof(char));
+
+    sprintf(aux, "%d", n_users + 1);
+    // ret[1] = userList == NULL ? 1 : userList->size + 1;
+    strcat(ret_str, aux);
+    strcat(ret_str, SOCKS_U_HEADER);
+    strcat(ret_str, "\n\n");
+
+    for(int i = 0; i < n_users; i++){
+        strcat(ret_str, users[i]->name);
+        //strcat(ret_str, ";");
+        //strcat(ret_str, users[i]->pass);
+        strcat(ret_str, "\n");
+    }
+    printf("String que está: %s\n", ret_str);
+    return ret_str;
+}
 
 

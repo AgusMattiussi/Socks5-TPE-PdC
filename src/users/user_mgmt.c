@@ -33,7 +33,7 @@ set_curr_user(char * username){
 
 void
 free_curr_user(){
-    if(curr_user!=NULL)free(curr_user);
+    if(curr_user!=NULL) free(curr_user);
 }
 
 uint8_t
