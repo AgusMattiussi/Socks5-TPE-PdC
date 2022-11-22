@@ -9,6 +9,7 @@ A su vez, se implementó un protocolo de monitoreo que permite realizar operacio
 Para instalar el proxy, es necesario contar con dos dependencias únicamente (normalmente vienen incluidas en cualquier distribución LINUX):
 - Make
 - GCC
+
 Teniendo estas dos dependencias, realizamos lo siguiente:
 1. Nos situamos dentro de la raíz del proyecto (`./TPE-Socks5/`)
 2. Allí, corremos el comando `make all`. Esto generará dos ejecutables, que se encontrarán en la carpeta `./bin`:
@@ -41,6 +42,8 @@ Las funcionaliades disponibles para ambos ejecutables son:
     - `metrics`: Lista métricas históricas del servidor (conexiones totales y actuales, bytes enviados, etc.)
     - `dis`: Activa el password dissector (Si ya se encontraba activado no tiene efecto)
     - `disoff`: Desactiva el password dissector (Si ya se encontraba desactivado no tiene efecto)
+
+**Aclaración**: Las opciones para el cliente son para ser utilizadas dentro de la negociación, y no mediante línea de comandos.
 
 ## Particularidades
 
