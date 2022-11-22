@@ -94,6 +94,9 @@ remove_user(char * username){
     free(to_delete->pass);
     free(to_delete);
     total_users--;
+    if(total_users == 0){
+        require_auth = false;
+    }
     printf("Lo borre\n");
     return 0;
 }
@@ -134,24 +137,6 @@ add_user(user_t * user){
     require_auth = true;
     printf("Lo agregue\n");
     return ADD_OK;
-}
-
-int 
-remove_user(char * username){
-
-    int pos = user_exists_by_username(username);
-    if(pos == -1) {
-        LogError("User does not exist."); 
-        return -1;
-    }
-    struct user_t * to_delete = users[pos];
-    users[pos] = users[total_users-1];
-    free(to_delete->name);
-    free(to_delete->pass);
-    free(to_delete);
-    total_users--;
-    printf("LO borre\n");
-    return 0;
 }
 
 int 

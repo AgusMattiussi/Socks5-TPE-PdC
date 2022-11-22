@@ -11,6 +11,7 @@
 #include <string.h>
 
 int proxy_socket = -1;
+static int cmd = -1;
 static char * version;
 char * commandStr[] = {
         "help",
@@ -64,6 +65,11 @@ int main(int argc, char ** argv) {
     
 }
 
+void
+retain_cmd(int new_cmd){
+    cmd = new_cmd;
+}
+
 void client_parse_args(int argc, char ** argv, struct proto * args) {
 
     memset(args, 0, sizeof(*args));
@@ -90,7 +96,7 @@ int analyze_return(char ret) {
         printf("Unexpected server error. Closing...\n");
         return 1;
     case 'i':
-        printf("OK!\n");
+        if(cmd != 1 && cmd != 6 && cmd != 9) printf("OK!\n");
         break;
     case CPERROR_ALREADY_EXISTS:
         printf("Error: user already exists\n");
@@ -134,7 +140,7 @@ int new_command() {
             break;
         }
     }
-
+    retain_cmd(command);
     char ret;
 
     switch (command)
