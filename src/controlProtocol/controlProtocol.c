@@ -35,6 +35,8 @@ static const struct state_definition controlProtStateDef[] = {
     },
 };
 
+static cpConnList * connList;
+
 static bool validatePassword(cpAuthParser * authParser){
     return strcmp(ADMIN_PASSWORD, authParser->inputPassword) == 0 ? true : false;
 }
@@ -54,10 +56,70 @@ static unsigned cpError(struct selector_key * key){
     return CP_ERROR;
 }
 
+static void initConnList(){
+    connList = malloc(sizeof(cpConnList));
+    connList->size = 0;
+    connList->first = NULL;
+}
 
-//TODO: static? Args?
-controlProtConn * newControlProtConn(int fd){
+static void addToList(controlProtConn * new){
+    if(connList->first == NULL){
+        connList->first = new;
+        return;
+    }
+    
+    controlProtConn * current = connList->first;
+    while (current->nextConn != NULL){
+        current = current->nextConn;
+    }
+    current->nextConn = new;
+    connList->size++;
+}
+
+/* Hay que liberar el nodo despues de desencadenarlo! */
+static controlProtConn * removeRec(controlProtConn * current, int fd, int * removed){
+    if(current == NULL)  
+        return NULL;
+
+    if(current->fd == fd){
+        controlProtConn * aux = current->nextConn;
+        current->nextConn = NULL;
+        *removed = 1;
+        return aux;
+    }
+    current->nextConn = removeRec(current->nextConn, fd, removed);
+    return current;
+}
+
+/* Hay que liberar el nodo despues de desencadenarlo! */
+static void removeFromList(controlProtConn * toRem){
+    int removed = 0;
+    connList->first = removeRec(connList->first, toRem->fd, &removed);
+    connList->size -= removed;
+}
+
+
+static void freeRec(controlProtConn * current){
+    if(current == NULL)
+        return;
+    freeRec(current->nextConn);
+    printf("Liberando fd: %d\n", current->fd);
+    freeControlProtConn(current, current->s);
+}
+
+void freeCpConnList(){
+    if(connList == NULL)
+        return;
+    
+    freeRec(connList->first);
+    return;
+}
+
+
+controlProtConn * newControlProtConn(int fd, fd_selector s){
     controlProtConn * new = calloc(1, sizeof(controlProtConn));
+    if(connList == NULL)
+        initConnList();
     
     if(new != NULL){
         initStm(&new->connStm);
@@ -76,6 +138,7 @@ controlProtConn * newControlProtConn(int fd){
         buffer_init(new->writeBuffer, BUFFER_SIZE, new->writeBufferData);
         
         new->fd = fd;
+        new->s = s;
         new->interests = OP_WRITE;  // El protocolo comienza escribiendo HELLO
         new->currentState = CP_HELLO;
         new->helloWritten = false;
@@ -83,6 +146,8 @@ controlProtConn * newControlProtConn(int fd){
         new->authAnsWritten = false;
         new->execAnsWritten = false;
         new->execAnswer = NULL;
+
+        addToList(new);
     }
     return new;
 }
@@ -114,10 +179,8 @@ void cpWriteHandler(struct selector_key * key){
         Actualizo el estado actual */
     cpc->currentState = stm_handler_write(&cpc->connStm, key);
     if(cpc->currentState == CP_ERROR){
-        //freeControlProtConn(cpc, key->s);
         return;
     }
-    // TODO: que pasa si entre aca por segunda vez?
 
     /* Si hay algo para leer, se lo envio al cliente */
     if(buffer_can_read(cpc->writeBuffer)){
@@ -127,19 +190,12 @@ void cpWriteHandler(struct selector_key * key){
         int bytesSent = send(cpc->fd, readPtr, bytesLeft, 0);
         if(bytesSent <= 0){
             LogError("[cpWriteHandler] Error/Closed: bytesSent <= 0\n");
+            removeFromList(cpc);
             freeControlProtConn(cpc, key->s);
             return;
         }
 
         buffer_read_adv(cpc->writeBuffer, bytesSent);
-
-        /* Si no tengo nada mas que enviarle al cliente, apago el interes 
-            de escritura */
-        //TODO: Funcara? Validar que los parsers esten done?
-        /* if(bytesSent == bytesLeft){
-            cpc->interests &= !OP_WRITE;
-            selector_set_interest_key(key, cpc->interests);
-        } */
     }
 
 }
@@ -158,6 +214,7 @@ void cpReadHandler(struct selector_key * key){
         int bytesRecv = recv(cpc->fd, readPtr, bytesLeft, 0);
         if(bytesRecv <= 0){
             LogError("[cpReadHandler] Error/Closed: bytesRecv <= 0\n");
+            removeFromList(cpc);
             freeControlProtConn(cpc, key->s);
             return;
         }
@@ -173,7 +230,9 @@ void cpReadHandler(struct selector_key * key){
 
 /* Libera los recursos de esta conexion */
 void cpCloseHandler(struct selector_key * key){
-    freeControlProtConn((controlProtConn *) key->data, key->s);
+    controlProtConn * aux = (controlProtConn *) key->data;
+    removeFromList(aux);
+    freeControlProtConn(aux, key->s);
 }
 
 
@@ -237,9 +296,10 @@ static controlProtStmState authRead(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
     cpAuthParser * parser =  &cpc->authParser;
 
+    /* Si el cpReadHandler se desperto, siempre deberia haber algo
+        para leer del readBuffer */
     if(!buffer_can_read(cpc->readBuffer)){
         LogInfo("[AUTH/authRead] Buffer Vacio: !buffer_can_read\n");
-        //TODO: Si se desperto siempre hay algo para leer no?
         return CP_ERROR;
     }
 
@@ -351,9 +411,10 @@ static controlProtStmState executeRead(struct selector_key * key){
     controlProtConn * cpc = (controlProtConn *) key->data;
     cpCommandParser * parser =  &cpc->commandParser;
 
+    /* Si ya escribi la respuesta y se la envie al cliente, puedo 
+        pasar al siguiente estado */
     if(!buffer_can_read(cpc->readBuffer)){
         LogError("[EXECUTE/executeRead] Buffer Vacio: !buffer_can_read\n");
-        //TODO: Manejar error
         return CP_AUTH;
     }
 
@@ -425,7 +486,7 @@ static controlProtStmState executeWrite(struct selector_key * key){
      * 
     **/
     if(cpc->execAnswer == NULL){
-        // TODO: Cambiar por array de punteros a funcion
+        // TODO: Cambiar por array de punteros a funcion (Para la proxima ;) )
         switch (parser->code){
             case CP_ADD_USER:
                 cpc->execAnswer = addProxyUser(parser);

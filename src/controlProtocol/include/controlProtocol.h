@@ -54,9 +54,9 @@ typedef enum controlProtErrorCode{
 /* Estructura para manejar los datos de una conexion
     del protocolo de control */
 typedef struct controlProtConn {
-    // TODO: Manejar datos de la conexion
     int fd;
     int interests;
+    fd_selector s;
 
     buffer * readBuffer;
     buffer * writeBuffer;
@@ -67,12 +67,8 @@ typedef struct controlProtConn {
     struct state_machine connStm;
     controlProtStmState currentState;
 
-    //TODO: Deberia ser un puntero? (para que se inicialice a demanda)
     cpAuthParser authParser;
     cpCommandParser commandParser;
-
-    //TODO: Deberia ser una lista?
-    //struct controlProtConn * nextConn;
 
     bool validPassword;
 
@@ -82,12 +78,21 @@ typedef struct controlProtConn {
     bool authAnsWritten;
     bool execAnsWritten;
     char * execAnswer;
+
+    /* Puntero al siguiente. Se usa para liberar todo ante una terminacion normal */
+    struct controlProtConn * nextConn;
 } controlProtConn;
 
-controlProtConn * newControlProtConn(int fd);
+typedef struct cpConnList {
+    controlProtConn * first;
+    size_t size;
+} cpConnList;
+
+controlProtConn * newControlProtConn(int fd, fd_selector s);
 void cpWriteHandler(struct selector_key * key);
 void cpReadHandler(struct selector_key * key);
 void cpCloseHandler(struct selector_key * key);
 void freeControlProtConn(controlProtConn * cpc, fd_selector s);
+void freeCpConnList();
 
 #endif
