@@ -13,7 +13,7 @@ cpCommandParserState cpcpParseByte(cpCommandParser * parser, uint8_t byte){
     switch (parser->currentState){
         case CPCP_COMMAND_CODE:
             LogInfo("[CPCP_COMMAND_CODE] - %hhx (%c)\n", byte, byte);
-            if(byte < CP_ADD_USER || byte > CP_LIST_USERS)
+            if(byte < CP_ADD_USER || byte > CP_DISSECTOR_OFF)
                 return CPCP_ERROR;
             parser->code = byte;
             return CPCP_HAS_DATA;
