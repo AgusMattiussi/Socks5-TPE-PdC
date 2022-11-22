@@ -158,35 +158,35 @@ int new_command() {
         case 2: 
             aux = strtok(NULL, " ");
             if(aux == NULL)
-                goto error;
+                goto not_enough_args;
             strcpy(arg, aux);
             aux = strtok(NULL, " ");
             if(aux == NULL)
-                goto error;
+                goto not_enough_args;
             strcpy(arg2, aux);
             aux = strtok(NULL, " ");
             if(aux != NULL)
-                goto error;
+                goto too_many_args;
             ret = double_arg_command(COMMAND_ADD_USER, arg, arg2, proxy_socket);
             break;
         case 3:
             aux = strtok(NULL, " ");
             if(aux == NULL)
-                goto error;
+                goto not_enough_args;
             strcpy(arg, aux);
             aux = strtok(NULL, " ");
             if(aux != NULL)
-                goto error;
+                goto too_many_args;
             ret = single_arg_command(COMMAND_DELETE_USER, arg, proxy_socket);
             break;
         case 4:
             aux = strtok(NULL, " ");
             if(aux == NULL)
-                goto error;
+                goto not_enough_args;
             strcpy(arg, aux);
             aux = strtok(NULL, " ");
             if(aux == NULL)
-                goto error;
+                goto not_enough_args;
             strcpy(arg2, aux);
             aux = strtok(NULL, " ");
             if(aux != NULL)
@@ -233,6 +233,14 @@ int new_command() {
     error:
         printf("Please, enter a valid command\n");
             return 0;
+    
+    not_enough_args:
+        printf("Not enough arguments. Check out \"help\"!\n");
+        return 0;
+    
+    too_many_args:
+        printf("Too many arguments. Check out \"help\"!\n");
+        return 0;
 }
 
 
