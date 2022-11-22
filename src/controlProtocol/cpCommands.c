@@ -165,8 +165,6 @@ char * getSniffedUsersList(cpCommandParser * parser){
         return ret;
     }
 
-    char aux[INITIAL_SIZE] = {0};
-
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
         int userLen = strlen(current->username)+1;
