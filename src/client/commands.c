@@ -142,7 +142,6 @@ void help() {
     printf(" - deleteuser <user>: delete an existing user from socks5 server\n\n");
     printf(" - editpass <user> <newpass>: edits add existing user password's\n\n");
     printf(" - list: list all users of socks5 server\n\n");
-    printf(" - listdiss: lists sniffed pop3 users and passwords\n\n");
     printf(" - metrics: displays server usage metrics\n\n");
     printf(" - dis: turns on the pop3 password dissector\n\n");
     printf(" - disoff: turns off the pop3 password dissector\n\n");
