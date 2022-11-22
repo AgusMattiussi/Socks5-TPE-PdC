@@ -6,14 +6,11 @@ int row_count = 0;
 char parse_users_message(int fd, char * offset) {
 
     uint8_t response_buf[MAXLEN] = {0};
-
     //FIXME: Estaba sin inicializar
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(fd, response_buf, byte_n, 0);
-
-    if(n_received < 0)
-        return 'x';
-
+    //printf("recibí %s\n", response_buf);
+        
     int pos = 0;
     if(offset == NULL) {
         if((char)response_buf[0] == FAILURE) {
@@ -21,6 +18,7 @@ char parse_users_message(int fd, char * offset) {
                 return 'x';
             return (char)response_buf[2];
         }
+        //row_count = 1;
         row_count = (int)response_buf[1];
         pos = 2;
     }
@@ -38,6 +36,7 @@ char parse_users_message(int fd, char * offset) {
         printf("%s\n", current_user);
         row_count--;
     } else {
+        //printf("entro 1\n");
         char aux[MAXLEN] = {0};
         strcat(aux, offset);
         strcat(aux, current_user);
@@ -45,9 +44,12 @@ char parse_users_message(int fd, char * offset) {
         printf("%s\n", aux);
     }
     
+    pos += strlen(current_user);
     row_count--;
 
-    while(pos<MAXLEN) {
+    //printf("por entrar al while\n");
+    while(pos<MAXLEN && row_count > 0) {
+        //printf("%c ", response_buf[pos]);
         if(response_buf[pos++] == TOKEN) {
             current_user = strtok(NULL, str);
             row_count--;
@@ -100,6 +102,8 @@ char parse_metrics_message(int fd) {
 }
 
 char receive_simple_response(int fd) {
+
+
     char response_buf[MAXLEN];
 
     //FIXME: Estaba sin inicializar
@@ -108,6 +112,7 @@ char receive_simple_response(int fd) {
 
     if(n_received < 0)
         return 'x';
+    
 
     if((char)response_buf[0] == FAILURE) {
         if(response_buf[1] != HAS_DATA)
@@ -122,7 +127,7 @@ void help() {
     printf("\n¡Bienvenido a SCALO_NET! Los comandos disponibles son los siguientes:\n\n");
     printf("adduser <usuario> <pass>: añadir usuario al servidor\n\n");
     printf("deleteuser <usuario>: eliminar usuario del servidor\n\n");
-    printf("editpass <newpass>: editar contraseña\n\n");
+    printf("editpass <usuario> <newpass>: editar contraseña\n\n");
     printf("list: listar usuarios del servidor\n\n");
     printf("listdiss: listar usuarios y contraseñas descubiertas\n\n");
     printf("metrics: obtener métricas de uso del servidor\n\n");
@@ -160,6 +165,7 @@ int admin_auth(int fd, char * buf) {
 }
 
 char single_arg_command(int command, char * username, int fd) {
+    printf("deleteuser\n");
     size_t len = strlen(username) + 3;
     char to_send[MAXLEN] = {0};
     to_send[0] = command;
