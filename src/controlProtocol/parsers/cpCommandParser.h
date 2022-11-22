@@ -12,10 +12,11 @@ typedef enum cpCommandCode {
     CP_ADD_USER,            // HAS_DATA = 1
     CP_REM_USER,            // HAS_DATA = 1
     CP_CHANGE_PASS,         // HAS_DATA = 1
-    CP_LIST_USERS,          // HAS_DATA = 0
+    CP_LIST_USERS_DISSEC,          // HAS_DATA = 0
     CP_GET_METRICS,         // HAS_DATA = 0
     CP_DISSECTOR_ON,        // HAS_DATA = 0
     CP_DISSECTOR_OFF,       // HAS_DATA = 0
+    CP_LIST_USERS
 } cpCommandCode;
 
 typedef enum cpCommandParserState {

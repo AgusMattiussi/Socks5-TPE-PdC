@@ -57,6 +57,19 @@ close_socks_conn(socks_conn_model * socks) {
 
     free(socks->buffers->aux_read_buff);
     free(socks->buffers->aux_write_buff);
+    
+    free(socks->buffers);
+
+    free(socks->parsers->auth_parser);
+    free(socks->parsers->connect_parser);
+    free(socks->parsers->req_parser);
+    free(socks->parsers);
+
+    free(socks->pop3_parser);
+
+    free(socks->cli_conn);
+    free(socks->src_conn);
+
     free(socks);
 }
 
