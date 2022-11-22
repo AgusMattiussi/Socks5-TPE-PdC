@@ -152,7 +152,41 @@ char * getSniffedUsersList(cpCommandParser * parser){
         return ret;
     }
     /* Obtenemos la lista de usuario sniffeados */
-    users_list * userList = get_sniffed_users();
+    //users_list * userList = get_sniffed_users();
+    users_list * userList = malloc(sizeof(users_list));
+
+    node * new_node6 = malloc(sizeof(node));
+    new_node6->username = "xd2";
+    new_node6->password = "lo2";
+    new_node6->next = NULL;
+
+    node * new_node5 = malloc(sizeof(node));
+    new_node5->username = "ab";
+    new_node5->password = "c2";
+    new_node5->next = new_node6;
+
+    node * new_node4 = malloc(sizeof(node));
+    new_node4->username = "too2";
+    new_node4->password = "sal";
+    new_node4->next = new_node5;
+
+    node * new_node3 = malloc(sizeof(node));
+    new_node3->username = "xd";
+    new_node3->password = "lol";
+    new_node3->next = new_node4;
+
+    node * new_node2 = malloc(sizeof(node));
+    new_node2->username = "azo";
+    new_node2->password = "co";
+    new_node2->next = new_node3;
+
+    node * new_node = malloc(sizeof(node));
+    new_node->username = "toto";
+    new_node->password = "saio";
+    new_node->next = new_node2;
+
+    userList->first = new_node;
+    userList->size = 6;
     
     int reallocCount = 0;
     ret = calloc(INITIAL_SIZE, sizeof(char));
@@ -164,6 +198,8 @@ char * getSniffedUsersList(cpCommandParser * parser){
     if(userList == NULL || userList->size == 0){
         return ret;
     }
+
+    char aux[INITIAL_SIZE] = {0};
 
     node * current = userList->first;
     for (int i = 0; i < userList->size && current != NULL; i++){
@@ -181,15 +217,14 @@ char * getSniffedUsersList(cpCommandParser * parser){
             }
         }
 
-        memcpy(&ret[ansSize], current->username, userLen);
+        strcat(ret, current->username);
         ansSize += userLen;
 
-        ret[ansSize++] = ';';
-        memcpy(&ret[ansSize], current->password, passLen);
-        ansSize += passLen;
-        ret[ansSize++] = '\n';
+        strcat(ret, ";");
 
-        //snprintf(ret, "%s%s;%s\n", ret, current->username, current->password);
+        ansSize += passLen;
+        strcat(ret, current->password);
+        strcat(ret, "\n");
 
         current = current->next;
     }
