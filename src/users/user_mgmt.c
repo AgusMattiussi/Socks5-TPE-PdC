@@ -86,7 +86,6 @@ user_exists_by_username(char * username){
 
 int 
 remove_user(char * username){
-    printf("Estoy entrando a add_user con parametro %s (%d)\n", username, strlen(username));
     int pos = user_exists_by_username(username);
     if(pos == -1){LogError("User does not exist."); return -1;}
     struct user_t * to_delete = users[pos];
