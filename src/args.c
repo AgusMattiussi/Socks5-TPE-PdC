@@ -10,7 +10,8 @@
 #include "logger/logger.h"
 #include "users/user_mgmt.h"
 
-static char * port(char * s) {
+static char * 
+port(char * s) {
     char * end = 0;
     const long sl = strtol(s, &end, 10);
 
@@ -94,7 +95,7 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
                 args->mng_addr = optarg;
                 break;
             case 'N':
-                //toggle_dissector(false);
+                set_sniffer_state(false);
                 break;
             case 'p':
                 args->socks_port = port(optarg);
@@ -140,7 +141,6 @@ void parse_args(int argc, char ** argv, struct socks5args * args) {
 
 finally:
     if (ret_code) {
-        //free_users();
         exit(ret_code);
     }
 }

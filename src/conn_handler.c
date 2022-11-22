@@ -12,7 +12,6 @@ void check_state(socks_conn_model * socks, enum socks_state state) {
 }
 
 void socks_conn_read(struct selector_key * key){
-    //Recupero información y le paso al handler de lectura de stm
     LogDebug("Entering socks_conn_read");
     socks_conn_model * socks = (socks_conn_model *) key->data;
     enum socks_state state = stm_handler_read(&socks->stm, key);

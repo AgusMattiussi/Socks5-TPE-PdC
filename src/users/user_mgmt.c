@@ -43,7 +43,7 @@ get_total_curr_users(){
 
 int 
 process_authentication_request(char * username, char * password){
-    if(!require_auth) return 0; // Que necesidad de chequear si igual no necesita auth.
+    if(!require_auth) return 0;
     for(int i = 0; i < total_users; i++){
         if(valid_credentials(username, password, users[i]->name, users[i]->pass)){
             return 0;
@@ -126,9 +126,6 @@ add_user(user_t * user){
     }
     strcpy(users[total_users]->name, user->name);
     strcpy(users[total_users]->pass, user->pass);
-    //users[total_users]->name[strlen(users[total_users]->name)] = '\0';
-    //users[total_users]->pass[strlen(users[total_users]->pass)] = '\0';
-    //free(user->name); free(user->pass);
 
     total_users++;
     require_auth = true;

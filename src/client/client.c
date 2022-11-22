@@ -22,7 +22,8 @@ char * commandStr[] = {
         "metrics",
         "dis",
         "disoff",
-        "list"
+        "list",
+        "exit"
 };
 
 typedef enum controlProtErrorCode{
@@ -98,6 +99,8 @@ int analyze_return(char ret) {
     case 'i':
         if(cmd != 1 && cmd != 6 && cmd != 9) printf("OK!\n");
         break;
+    case 'n':
+        return 1;
     case CPERROR_ALREADY_EXISTS:
         printf("Error: user already exists\n");
         break;
@@ -222,6 +225,10 @@ int new_command() {
                 goto error;
             ret = list_users(COMMAND_LIST_USERS, proxy_socket);
             break;
+        case 10:
+            printf("Bye!\n");
+            return 1;
+            break;
         default:
             goto error;
         }
@@ -278,7 +285,7 @@ int mng_connect(char * addr, char * port) {
     size_t byte_n = MAXLEN;
     ssize_t n_received = recv(proxy_socket, buf, byte_n, 0);
 
-    if(buf[0] != SUCCESS || n_received < 0)
+    if(buf[0] != SUCCESS || n_received <= 0)
         return -1;
 
     version = &buf[2];
@@ -291,6 +298,8 @@ int mng_connect(char * addr, char * port) {
 
     for(int i=0; i<3 && !auth; i++) {
         auth = admin_auth(proxy_socket, buf);
+        if(auth == -1)
+            return -1;
     }
 
     if(!auth) {

@@ -25,7 +25,7 @@
 #define COMMAND_DISSECTOR_ON '6'
 #define COMMAND_DISSECTOR_OFF '7'
 #define COMMAND_LIST_USERS '8'
-#define COMMAND_CANT 9
+#define COMMAND_CANT 10
 #define HAS_NOT_DATA 0
 #define HAS_DATA 1
 #define MAXLEN 1024
